@@ -18,7 +18,7 @@ class NodeCase(unittest.TestCase):
     def testImport(self):
         tree = ast.parse('a')
         tree = pyToStruct(tree)
-        exp_str = "Module(body=[Expr(value=Name(id='a', ctx=Load()))])"
+        exp_str = "Module(body=(Expr(value=Name(id='a', ctx=Load())),))"
         self.assertTrue(isinstance(tree, Struct))
         self.assertEqual(str(tree), exp_str)
     

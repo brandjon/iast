@@ -44,13 +44,14 @@ for name, pnode in py_nodes.items():
     __all__.append(name)
 
 
-def convert_ast(value, to_struct=True):
+def convert_ast(value, to_struct):
     """Convert between Python AST nodes and struct nodes.
     The direction is given by to_struct. value may be a node,
     list of nodes, or non-node value.
     """
     base = ast.AST if to_struct else AST
     mapping = struct_nodes if to_struct else py_nodes
+    seqtype = tuple if to_struct else list
     
     if isinstance(value, base):
         name = value.__class__.__name__
@@ -58,19 +59,19 @@ def convert_ast(value, to_struct=True):
         field_values = []
         for field in value._fields:
             fval = getattr(value, field, None)
-            fval = convert_ast(fval)
+            fval = convert_ast(fval, to_struct)
             field_values.append(fval)
         new_value = out_type(*field_values)
         return new_value
-    elif isinstance(value, list):
-        return [convert_ast(item) for item in value]
+    elif isinstance(value, (list, tuple)):
+        return seqtype(convert_ast(item, to_struct) for item in value)
     else:
         return value
 
 def pyToStruct(value):
     """Turn a Python AST to a struct AST."""
     assert isinstance(value, ast.AST)
-    return convert_ast(value)
+    return convert_ast(value, to_struct=True)
 
 def structToPy(value):
     """Turn a struct AST to a Python AST."""
