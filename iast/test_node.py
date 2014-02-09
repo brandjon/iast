@@ -5,6 +5,7 @@ import unittest
 import ast
 
 from simplestruct import Struct
+from simplestruct.util import trim
 
 from iast.node import *
 
@@ -29,6 +30,19 @@ class NodeCase(unittest.TestCase):
         tree = structToPy(tree)
         self.assertTrue(isinstance(tree, ast.AST))
         self.assertEqual(ast.dump(tree), exp_str)
+    
+    def testDump(self):
+        tree = ast.parse('a += b')
+        tree = pyToStruct(tree)
+        text = dump(tree)
+        exp_text = trim('''
+            Module(body = [AugAssign(target = Name(id = 'a',
+                                                   ctx = Store()),
+                                     op = Add(),
+                                     value = Name(id = 'b',
+                                                  ctx = Load()))])
+            ''')
+        self.assertEqual(text, exp_text)
 
 
 if __name__ == '__main__':

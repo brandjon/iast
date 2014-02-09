@@ -17,6 +17,7 @@ __all__ = [
     'convert_ast',
     'pyToStruct',
     'structToPy',
+    'dump',
 ]
 
 
@@ -77,3 +78,23 @@ def structToPy(value):
     """Turn a struct AST to a Python AST."""
     assert isinstance(value, AST)
     return convert_ast(value, to_struct=False)
+
+
+def dump(value, col=0):
+    """A multi-line struct-AST pretty-printer."""
+    if isinstance(value, AST):
+        functor = value.__class__.__name__ + '('
+        newcol = col + len(functor)
+        delim = ',\n' + (' ' * newcol)
+        return (functor +
+                delim.join(key + ' = ' + dump(item, len(key) + 3 + newcol)
+                           for key, item in value._asdict().items()) +
+                ')')
+    elif isinstance(value, tuple):
+        newcol = col + 1
+        delim = ',\n' + (' ' * newcol)
+        return ('[' +
+                ', '.join(dump(item, newcol) for item in value) +
+                ']')
+    else:
+        return repr(value)
