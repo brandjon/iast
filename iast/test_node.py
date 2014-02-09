@@ -17,10 +17,18 @@ class NodeCase(unittest.TestCase):
     
     def testImport(self):
         tree = ast.parse('a')
-        new_tree = pyToStruct(tree)
+        tree = pyToStruct(tree)
         exp_str = "Module(body=[Expr(value=Name(id='a', ctx=Load()))])"
-        self.assertTrue(isinstance(new_tree, Struct))
-        self.assertEqual(str(new_tree), exp_str)
+        self.assertTrue(isinstance(tree, Struct))
+        self.assertEqual(str(tree), exp_str)
+    
+    def testExport(self):
+        tree = ast.parse('a')
+        exp_str = ast.dump(tree)
+        tree = pyToStruct(tree)
+        tree = structToPy(tree)
+        self.assertTrue(isinstance(tree, ast.AST))
+        self.assertEqual(ast.dump(tree), exp_str)
 
 
 if __name__ == '__main__':
