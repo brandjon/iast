@@ -87,7 +87,19 @@ class NodeTransformer(NodeVisitor):
     node.
     """
     
+    def process(self, value):
+        # Intercept None returns, interpret them as leaving the
+        # value unchanged.
+        result = super().process(value)
+        if result is None:
+            result = value
+        return result
+    
     def seq_visit(self, seq):
+        # If everything comes back None, return None to avoid
+        # unnecessary work. If something comes back non-None,
+        # create a new sequence with the new values spliced in.
+        
         changed = False
         new_seq = []
         
@@ -108,6 +120,9 @@ class NodeTransformer(NodeVisitor):
             return None
     
     def generic_visit(self, node):
+        # If children return non-None values, form a new node
+        # with the new child values.
+        
         repls = {}
         for field in node._fields:
             value = getattr(node, field)

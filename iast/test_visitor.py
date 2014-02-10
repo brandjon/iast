@@ -26,6 +26,8 @@ class VisitorCase(unittest.TestCase):
         self.assertEqual(result, {'a', 'foo'})
     
     def testTransformer(self):
+        # Basic functionality.
+        
         class Foo(NodeTransformer):
             def visit_Name(self, node):
                 if node.id == 'a':
@@ -47,6 +49,18 @@ class VisitorCase(unittest.TestCase):
                                                  ctx = Load()))])
             ''')
         self.assertEqual(dump(tree), exp_text)
+        
+        # Make sure None returns aren't propagated to caller.
+        
+        class Foo(NodeTransformer):
+            pass
+        
+        tree1 = parse('pass')
+        tree2 = Foo.run(tree1)
+        self.assertEqual(tree1, tree2)
+        tree1 = (parse('pass'), parse('pass'))
+        tree2 = Foo.run(tree1)
+        self.assertEqual(tree1, tree2)
 
 
 if __name__ == '__main__':
