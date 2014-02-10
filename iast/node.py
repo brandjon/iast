@@ -3,10 +3,11 @@
 # TODO: for some reason it looks like calling type() directly
 # causes the struct nodes to have a __module__ of simplestruct.struct.
 
+
 import ast
 from collections import OrderedDict
 
-from simplestruct import Struct, Field
+from simplestruct import Struct, Field, MetaStruct
 
 
 __all__ = [
@@ -22,14 +23,40 @@ __all__ = [
 ]
 
 
+class MetaAST(MetaStruct):
+    
+    """MetaStruct subclass for defining Struct AST nodes.
+    
+    Struct fields are auto-generated from the _fields tuple.
+    """
+    
+    def __new__(mcls, clsname, bases, namespace, **kargs):
+        # Make sure the namespace is an ordered mapping.
+        namespace = OrderedDict(namespace)
+        
+        # Create if not present, ensure sequence is a tuple.
+        fields = tuple(namespace.get('_fields', ()))
+        namespace['_fields'] = fields
+        
+        # For each field, if an explicit definition is not provided,
+        # add one, and if it is provided, put it in the right order.
+        for fname in fields:
+            if fname not in namespace:
+                namespace[fname] = Field()
+            else:
+                namespace.move_to_end(fname)
+        
+        return super().__new__(mcls, clsname, bases, namespace, **kargs)
+
+# Root of struct node class hierarchy.
+class AST(Struct, metaclass=MetaAST):
+    pass
+
+
 # Python node classes.
 py_nodes = {name: nodecls for name, nodecls in ast.__dict__.items()
                           if isinstance(nodecls, type)
                           if issubclass(nodecls, ast.AST)}
-
-# Root of struct node class hierarchy.
-class AST(Struct):
-    pass
 
 # Struct node classes
 struct_nodes = {'AST': AST}
@@ -38,8 +65,7 @@ struct_nodes = {'AST': AST}
 for name, pnode in py_nodes.items():
     if name == 'AST':
         continue
-    namespace = OrderedDict((f, Field()) for f in pnode._fields)
-    namespace['_fields'] = tuple(pnode._fields)
+    namespace = {'_fields': tuple(pnode._fields)}
     snode = type(pnode.__name__, (AST,), namespace)
     globals()[pnode.__name__] = snode
     struct_nodes[name] = snode
