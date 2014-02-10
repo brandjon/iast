@@ -101,7 +101,7 @@ def dump(value, col=0):
         newcol = col + 1
         delim = ',\n' + (' ' * newcol)
         return ('[' +
-                ', '.join(dump(item, newcol) for item in value) +
+                delim.join(dump(item, newcol) for item in value) +
                 ']')
     else:
         return repr(value)

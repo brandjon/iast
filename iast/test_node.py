@@ -32,14 +32,16 @@ class NodeCase(unittest.TestCase):
         self.assertEqual(ast.dump(tree), exp_str)
     
     def testDump(self):
-        tree = parse('a += b')
+        tree = parse('a, b = c')
         text = dump(tree)
         exp_text = trim('''
-            Module(body = [AugAssign(target = Name(id = 'a',
-                                                   ctx = Store()),
-                                     op = Add(),
-                                     value = Name(id = 'b',
-                                                  ctx = Load()))])
+            Module(body = [Assign(targets = [Tuple(elts = [Name(id = 'a',
+                                                                ctx = Store()),
+                                                           Name(id = 'b',
+                                                                ctx = Store())],
+                                                   ctx = Store())],
+                                  value = Name(id = 'c',
+                                               ctx = Load()))])
             ''')
         self.assertEqual(text, exp_text)
 
