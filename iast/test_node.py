@@ -32,8 +32,7 @@ class NodeCase(unittest.TestCase):
         self.assertEqual(ast.dump(tree), exp_str)
     
     def testDump(self):
-        tree = ast.parse('a += b')
-        tree = pyToStruct(tree)
+        tree = parse('a += b')
         text = dump(tree)
         exp_text = trim('''
             Module(body = [AugAssign(target = Name(id = 'a',

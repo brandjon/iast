@@ -17,6 +17,7 @@ __all__ = [
     'convert_ast',
     'pyToStruct',
     'structToPy',
+    'parse',
     'dump',
 ]
 
@@ -78,6 +79,12 @@ def structToPy(value):
     """Turn a struct AST to a Python AST."""
     assert isinstance(value, AST)
     return convert_ast(value, to_struct=False)
+
+def parse(source):
+    """Like ast.parse(), but produce a struct AST."""
+    tree = ast.parse(source)
+    tree = pyToStruct(tree)
+    return tree
 
 
 def dump(value, col=0):
