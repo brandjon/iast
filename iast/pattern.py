@@ -14,6 +14,7 @@ __all__ = [
     'PatMaker',
     'raw_match',
     'match',
+    'sub',
 ]
 
 
@@ -54,13 +55,11 @@ class VarExpander(NodeTransformer):
     
     """Expand pattern variables."""
     
-    def __init__(self, var, repl):
-        self.var = var
-        self.repl = repl
+    def __init__(self, mapping):
+        self.mapping = mapping
     
     def visit_PatVar(self, node):
-        if node.id == self.var:
-            return self.repl
+        return self.mapping.get(node.id, None)
 
 class OccChecker(NodeVisitor):
     
@@ -153,7 +152,7 @@ def raw_match(tree1, tree2):
         equations list and in the other result mappings.
         """
         result[var] = repl
-        trans = VarExpander(var, repl)
+        trans = VarExpander({var: repl})
         for k in result:
             result[k] = trans.process(result[k])
         for i, (lhs, rhs) in enumerate(eqs):
@@ -181,3 +180,37 @@ def match(tree1, tree2):
         return raw_match(tree1, tree2)
     except MatchFailure:
         return None 
+
+
+class Substitutor(NodeTransformer):
+    
+    """Transformer helper for sub()."""
+    
+    def __init__(self, pattern, repl):
+        self.pattern = pattern
+        # Normalize repl into function form.
+        if isinstance(repl, AST):
+            self.repl = lambda mapping: VarExpander.run(repl, mapping)
+        else:
+            self.repl = repl
+    
+    def visit(self, value):
+        mapping = match(self.pattern, value)
+        if mapping is not None:
+            # Match. Consult repl, if it returns None,
+            # skip the match and continue recursing.
+            result = self.repl(mapping)
+            if result is None:
+                result = super().visit(value)
+            return result
+        else:
+            return super().visit(value)
+
+def sub(pattern, repl, tree):
+    """Analogous to re.sub(). All outermost occurrences of pattern in
+    tree are replaced according to repl. If repl is an AST, its PatVars
+    get instantiated by the parts of the tree that matched the same
+    PatVars in pattern. Otherwise, repl must be a callable that takes
+    in the match mapping and produces a tree.
+    """
+    return Substitutor.run(tree, pattern, repl)

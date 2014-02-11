@@ -17,6 +17,12 @@ class PatternCase(unittest.TestCase):
     def pat(self, source):
         return self.patmaker.process(parse(source))
     
+    def pe(self, source):
+        return parse(source).body[0].value
+    
+    def pate(self, source):
+        return self.pat(source).body[0].value
+    
     def testMatchStep(self):
         # Simple.
         result = match_step(PatVar('_X'), Num(1))
@@ -65,6 +71,35 @@ class PatternCase(unittest.TestCase):
         
         result = match(1, 2)
         self.assertEqual(result, None)
+    
+    def testSub(self):
+        # Basic.
+        tree = parse('print(1 + 2)')
+        tree = sub(self.pate('_X + _Y'), self.pate('(5 * _X) + _Y'), tree)
+        exp_tree = parse('print((5 * 1) + 2)')
+        self.assertEqual(tree, exp_tree)
+        
+        # Function repls, multiple replacements.
+        def foo(mapping):
+            return Num(mapping['_X'] * 2)
+        tree = parse('1 + 2')
+        tree = sub(Num(PatVar('_X')), foo, tree)
+        exp_tree = parse('2 + 4')
+        self.assertEqual(tree, exp_tree)
+        
+        # Match outermost first. Keep matching if repl returns None.
+        def foo(mapping):
+            if mapping['_X'] == 1 or isinstance(mapping['_Y'], Num):
+                return None
+            else:
+                return Num(10 * mapping['_X'])
+        tree = parse('1 + (2 + (3 + (4 + 5)))')
+        pattern = BinOp(Num(PatVar('_X')), Add(), PatVar('_Y'))
+        # Matching should skip 1 + ..., then hit 2 + ... without
+        # looking at 3 + ... or  beyond.
+        tree = sub(pattern, foo, tree)
+        exp_tree = parse('1 + 20')
+        self.assertEqual(tree, exp_tree)
 
 
 if __name__ == '__main__':
