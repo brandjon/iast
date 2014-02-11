@@ -100,6 +100,26 @@ class PatternCase(unittest.TestCase):
         tree = sub(pattern, foo, tree)
         exp_tree = parse('1 + 20')
         self.assertEqual(tree, exp_tree)
+    
+    def testPatTrans(self):
+        pattern = BinOp(Num(PatVar('_X')), PatVar('_Op'), Num(PatVar('_Y')))
+        repl = lambda _X, _Op, _Y: Num(_X + _Y) if _X < 5 else None
+        
+        # Bottom-up.
+        
+        tree = parse('1 + (2 + 3)')
+        tree = PatternTransformer.run(tree, [(pattern, repl)])
+        exp_tree = parse('6')
+        self.assertEqual(tree, exp_tree)
+        
+        # Return None to skip match.
+        pattern2 = BinOp(Num(PatVar('_X')), Add(), Num(PatVar('_Y')))
+        repl2 = lambda _X, _Y: Num(_X * _Y)
+        tree = parse('(2 + 3) + 4')
+        tree = PatternTransformer.run(tree,
+                    [(pattern, repl), (pattern2, repl2)])
+        exp_tree = parse('20')
+        self.assertEqual(tree, exp_tree)
 
 
 if __name__ == '__main__':

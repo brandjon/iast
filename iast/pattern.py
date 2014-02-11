@@ -19,6 +19,7 @@ __all__ = [
     'raw_match',
     'match',
     'sub',
+    'PatternTransformer',
 ]
 
 
@@ -226,3 +227,31 @@ def sub(pattern, repl, tree):
     tree are replaced according to repl.
     """
     return Substitutor.run(tree, pattern, repl)
+
+
+class PatternTransformer(NodeTransformer):
+    
+    """Apply multiple patterns, bottom-up. Accepts a list of
+    (pattern, repl) pairs, and applies each one in turn until the
+    pattern matches and the repl returns a non-None value. Children
+    are processed before the current node is matched against.
+    """
+    
+    def __init__(self, patrepls):
+        self.patrepls = [(pattern, normalize_repl(repl))
+                         for pattern, repl in patrepls]
+    
+    def visit(self, tree):
+        subresult = super().visit(tree)
+        if subresult is not None:
+            tree = subresult
+        
+        for pattern, repl in self.patrepls:
+            mapping = match(pattern, tree)
+            if mapping is not None:
+                patresult = repl(**mapping)
+                if patresult is not None:
+                    return patresult
+        
+        # No patterns matched. Propagate the (possibly None) subresult.
+        return subresult
