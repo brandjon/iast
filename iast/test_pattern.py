@@ -3,7 +3,7 @@
 
 import unittest
 
-from iast.node import parse, Num
+from iast.node import parse, Num, BinOp, Add
 
 from iast.pattern import *
 
@@ -14,8 +14,46 @@ def pat(source):
 
 class PatternCase(unittest.TestCase):
     
+    def testMatch(self):
+        # Simple.
+        eqs = match_eqs(PatVar('_X'), Num(1))
+        exp_eqs = [(PatVar('_X'), Num(1))]
+        self.assertEqual(eqs, exp_eqs)
+        
+        # Var on RHS.
+        eqs = match_eqs(Num(1), PatVar('_X'))
+        exp_eqs = [(PatVar('_X'), Num(1))]
+        self.assertEqual(eqs, exp_eqs)
+        
+        # Redundant equation.
+        eqs = match_eqs(PatVar('_X'), PatVar('_X'))
+        self.assertEqual(eqs, [])
+        
+        # Circular equation.
+        with self.assertRaises(MatchFailure):
+            match_eqs(PatVar('_X'), BinOp(PatVar('_X'), Add(), Num(1)))
+        
+        # Nodes, constants.
+        eqs = match_eqs(Num(1), Num(1))
+        self.assertEqual(eqs, [(1, 1)])
+        with self.assertRaises(MatchFailure):
+            match_eqs(Num(1), BinOp(Num(1), Add(), Num(2)))
+        with self.assertRaises(MatchFailure):
+            match_eqs(1, 2)
+        
+        # Tuples.
+        eqs = match_eqs((1, 2), (1, 2))
+        exp_eqs = [(1, 1), (2, 2)]
+        self.assertEqual(eqs, exp_eqs)
+        with self.assertRaises(MatchFailure):
+            match_eqs((1, 2), (1, 2, 3))
+        
+        # Get bindings separately.
+        eqs, bindings = match(PatVar('_X'), Num(1))
+        self.assertEqual(eqs, [])
+        self.assertEqual(bindings, {'_X': Num(1)})
+    
     def testUnify(self):
-        # Basic functionality.
         eqs = [
             (pat('_X + _Y'),   pat('1 + _Z')),
             (pat('_Z'),        pat('2')),
@@ -27,20 +65,6 @@ class PatternCase(unittest.TestCase):
             '_Z': Num(2),
         }
         self.assertEqual(mapping, exp_mapping)
-        
-        # Redundant equation.
-        eqs = [
-            (pat('_X'),        pat('_X')),
-        ]
-        mapping = unify_eqs(eqs)
-        self.assertEqual(mapping, {})
-        
-        # Circular equation.
-        eqs = [
-            (pat('_X'),        pat('_X + 1')),
-        ]
-        with self.assertRaises(MatchFailure):
-            unify_eqs(eqs)
 
 
 if __name__ == '__main__':

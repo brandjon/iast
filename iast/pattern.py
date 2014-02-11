@@ -9,7 +9,10 @@ from iast.visitor import NodeVisitor, NodeTransformer
 
 __all__ = [
     'MatchFailure',
+    'PatVar',
     'PatMaker',
+    'match',
+    'match_eqs',
     'unify_eqs',
 ]
 
@@ -67,6 +70,73 @@ class OccChecker(NodeVisitor):
             self.found = True
 
 
+def match(lhs, rhs):
+    """Attempt to match lhs against rhs at the top-level. Return a
+    list of equations that must hold for the matching to succeed,
+    or raise MatchFailure if matching is not possible. Variable
+    bindings are also returned, as a mapping.
+    """
+    # In practice, bindings is always either empty or contains
+    # just one mapping.
+    bindings = {}
+    
+    # Flip for symmetric case.
+    if not isinstance(lhs, PatVar) and isinstance(rhs, PatVar):
+        lhs, rhs = rhs, lhs
+    
+    # <variable> matching <anything>
+    if isinstance(lhs, PatVar):
+        eqs = []
+        if not (isinstance(rhs, PatVar) and rhs.id == lhs.id):
+            if OccChecker.run(rhs, lhs.id):
+                raise MatchFailure('Circular match on ' + lhs.id)
+            bindings[lhs.id] = rhs
+    
+    # <node functor> matching <non-variable>
+    elif isinstance(lhs, AST):
+        if not isinstance(rhs, AST):
+            raise MatchFailure(
+                'Node {} does not match non-node {}'.format(
+                lhs.__class__.__name__, repr(rhs)))
+        elif not type(lhs) == type(rhs):
+            raise MatchFailure('Node {} does not match node {}'.format(
+                               lhs.__class__.__name__,
+                               rhs.__class__.__name__))
+        else:
+            eqs = [(getattr(lhs, field), getattr(rhs, field))
+                   for field in lhs._fields]
+    
+    # <tuple functor> matching <non-variable>
+    elif isinstance(lhs, tuple):
+        if not isinstance(rhs, tuple):
+            raise MatchFailure(
+                'Sequence {} does not match non-sequence {}'.format(
+                repr(lhs), repr(rhs)))
+        elif len(lhs) != len(rhs):
+            raise MatchFailure(
+                'Sequence {} and sequence {} have '
+                'different lengths'.format(
+                repr(lhs), repr(rhs)))
+        else:
+            eqs = list(zip(lhs, rhs))
+    
+    # <constant> matching <non-variable>
+    else:
+        if lhs != rhs:
+            raise MatchFailure(
+                'Constant {} does not match {}'.format(
+                repr(lhs), repr(rhs)))
+        eqs = []
+    
+    return eqs, bindings
+
+def match_eqs(lhs, rhs):
+    """Match, but return bindings as equations."""
+    eqs, bindings = match(lhs, rhs)
+    eqs.extend((PatVar(var), repl) for var, repl in bindings.items())
+    return eqs
+
+
 def unify_eqs(eqs):
     """Given a list of equations, run the unification algorithm.
     Return a mapping from each variable to a tree, where the variable
@@ -86,51 +156,9 @@ def unify_eqs(eqs):
     
     while len(eqs) > 0:
         lhs, rhs = eqs.pop()
-        # Flip for symmetric case.
-        if not isinstance(lhs, PatVar) and isinstance(rhs, PatVar):
-            lhs, rhs = rhs, lhs
-        
-        # <variable> matching <anything>
-        if isinstance(lhs, PatVar):
-            if not (isinstance(rhs, PatVar) and rhs.id == lhs.id):
-                if OccChecker.run(rhs, lhs.id):
-                    raise MatchFailure('Circular match on ' + lhs.id)
-                bindvar(lhs.id, rhs)
-        
-        # <node functor> matching <non-variable>
-        elif isinstance(lhs, AST):
-            if not isinstance(rhs, AST):
-                raise MatchFailure(
-                    'Node {} does not match non-node {}'.format(
-                    lhs.__class__.__name__, repr(rhs)))
-            elif not type(lhs) == type(rhs):
-                raise MatchFailure('Node {} does not match node {}'.format(
-                                   lhs.__class__.__name__,
-                                   rhs.__class__.__name__))
-            else:
-                for field in lhs._fields:
-                    eqs.append((getattr(lhs, field), getattr(rhs, field)))
-        
-        # <tuple functor> matching <non-variable>
-        elif isinstance(lhs, tuple):
-            if not isinstance(rhs, tuple):
-                raise MatchFailure(
-                    'Sequence {} does not match non-sequence {}'.format(
-                    repr(lhs), repr(rhs)))
-            elif len(lhs) != len(rhs):
-                raise MatchFailure(
-                    'Sequence {} and sequence {} have '
-                    'different lengths'.format(
-                    repr(lhs), repr(rhs)))
-            else:
-                for item1, item2 in zip(lhs, rhs):
-                    eqs.append((item1, item2))
-        
-        # <constant> matching <non-variable>
-        else:
-            if lhs != rhs:
-                raise MatchFailure(
-                    'Constant {} does not match {}'.format(
-                    repr(lhs), repr(rhs)))
+        new_eqs, new_bindings = match(lhs, rhs)
+        eqs.extend(new_eqs)
+        for var, repl in new_bindings.items():
+            bindvar(var, repl)
     
     return result
