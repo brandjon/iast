@@ -186,23 +186,34 @@ def match(tree1, tree2):
         return None 
 
 
+# Pattern substitution takes in a pattern tree P with variables X,
+# and an input tree T. If P matches T, a new tree is returned as
+# determined by a replacement function (repl). The repl takes in
+# each X as a keyword argument, bound to the corresponding matching
+# subtree of T. As a convenience, the repl may be given instead as
+# an AST that contains uses of the vars in X. The repl returns
+# either a replacement tree, or None to skip this match.
+
+
+def normalize_repl(repl):
+    """Turn AST repls into function repls."""
+    if isinstance(repl, AST):
+        return lambda **mapping: VarExpander.run(repl, mapping)
+    else:
+        return repl
+
 class Substitutor(NodeTransformer):
     
-    """Transformer helper for sub()."""
+    """Perform pattern substitution on all outermost matching subtrees."""
     
     def __init__(self, pattern, repl):
         self.pattern = pattern
-        # Normalize repl into function form.
-        if isinstance(repl, AST):
-            self.repl = lambda **mapping: VarExpander.run(repl, mapping)
-        else:
-            self.repl = repl
+        self.repl = normalize_repl(repl)
     
     def visit(self, tree):
         mapping = match(self.pattern, tree)
         if mapping is not None:
-            # Match. Consult repl, if it returns None,
-            # skip the match and continue recursing.
+            # Match. If repl returns None, continue recursing.
             result = self.repl(**mapping)
             if result is None:
                 result = super().visit(tree)
@@ -212,10 +223,6 @@ class Substitutor(NodeTransformer):
 
 def sub(pattern, repl, tree):
     """Analogous to re.sub(). All outermost occurrences of pattern in
-    tree are replaced according to repl. If repl is an AST, its PatVars
-    get instantiated by the parts of the tree that matched the same
-    PatVars in pattern. Otherwise, repl must be a callable that takes
-    in the pattern variables as keyword arguments and produces a tree,
-    or returns None to ignore this match.
+    tree are replaced according to repl.
     """
     return Substitutor.run(tree, pattern, repl)
