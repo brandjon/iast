@@ -12,8 +12,6 @@ __all__ = [
     'PatVar',
     'PatMaker',
     'match',
-    'match_eqs',
-    'unify_eqs',
 ]
 
 
@@ -70,7 +68,7 @@ class OccChecker(NodeVisitor):
             self.found = True
 
 
-def match(lhs, rhs):
+def match_step(lhs, rhs):
     """Attempt to match lhs against rhs at the top-level. Return a
     list of equations that must hold for the matching to succeed,
     or raise MatchFailure if matching is not possible. Variable
@@ -130,19 +128,15 @@ def match(lhs, rhs):
     
     return eqs, bindings
 
-def match_eqs(lhs, rhs):
-    """Match, but return bindings as equations."""
-    eqs, bindings = match(lhs, rhs)
-    eqs.extend((PatVar(var), repl) for var, repl in bindings.items())
-    return eqs
 
-
-def unify_eqs(eqs):
-    """Given a list of equations, run the unification algorithm.
-    Return a mapping from each variable to a tree, where the variable
-    does not appear anywhere else in the mapping.
+def match(tree1, tree2):
+    """Given two trees to match, run the unification algorithm. Return
+    a mapping from each variable to a tree, where the variable does not
+    appear anywhere else in the mapping.
     """
+    eqs = [(tree1, tree2)]
     result = {}
+    
     def bindvar(var, repl):
         """Add a binding var -> repl. Replace var with repl in the
         equations list and in the other result mappings.
@@ -156,7 +150,7 @@ def unify_eqs(eqs):
     
     while len(eqs) > 0:
         lhs, rhs = eqs.pop()
-        new_eqs, new_bindings = match(lhs, rhs)
+        new_eqs, new_bindings = match_step(lhs, rhs)
         eqs.extend(new_eqs)
         for var, repl in new_bindings.items():
             bindvar(var, repl)
