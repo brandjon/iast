@@ -1,4 +1,4 @@
-"""Pattern-matching and unificaiton for struct ASTs"""
+"""Pattern-matching and unificaiton for struct ASTs."""
 
 
 import ast
@@ -12,6 +12,7 @@ __all__ = [
     'MatchFailure',
     'PatVar',
     'PatMaker',
+    'raw_match',
     'match',
 ]
 
@@ -139,10 +140,10 @@ def match_step(lhs, rhs):
     return eqs, bindings
 
 
-def match(tree1, tree2):
+def raw_match(tree1, tree2):
     """Given two trees to match, run the unification algorithm. Return
     a mapping from each variable to a tree, where the variable does not
-    appear anywhere else in the mapping.
+    appear anywhere else in the mapping. Raise MatchFailure on failure.
     """
     eqs = [(tree1, tree2)]
     result = {}
@@ -171,3 +172,12 @@ def match(tree1, tree2):
             del result[k]
     
     return result
+
+def match(tree1, tree2):
+    """Same as raw_match(), but return None instead of raising
+    MatchFailure.
+    """
+    try:
+        return raw_match(tree1, tree2)
+    except MatchFailure:
+        return None 

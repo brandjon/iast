@@ -54,14 +54,17 @@ class PatternCase(unittest.TestCase):
             match_step((1, 2), (1, 2, 3))
     
     def testMatch(self):
-        mapping = match(self.pat('((_X, _Y), _Z + _)'),
-                        self.pat('((1, _Z), 2 + 3)'))
-        exp_mapping = {
+        result = match(self.pat('((_X, _Y), _Z + _)'),
+                       self.pat('((1, _Z), 2 + 3)'))
+        exp_result = {
             '_X': Num(1),
             '_Y': Num(2),
             '_Z': Num(2),
         }
-        self.assertEqual(mapping, exp_mapping)
+        self.assertEqual(result, exp_result)
+        
+        result = match(1, 2)
+        self.assertEqual(result, None)
 
 
 if __name__ == '__main__':
