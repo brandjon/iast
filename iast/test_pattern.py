@@ -80,19 +80,19 @@ class PatternCase(unittest.TestCase):
         self.assertEqual(tree, exp_tree)
         
         # Function repls, multiple replacements.
-        def foo(mapping):
-            return Num(mapping['_X'] * 2)
+        def foo(_X):
+            return Num(_X * 2)
         tree = parse('1 + 2')
         tree = sub(Num(PatVar('_X')), foo, tree)
         exp_tree = parse('2 + 4')
         self.assertEqual(tree, exp_tree)
         
         # Match outermost first. Keep matching if repl returns None.
-        def foo(mapping):
-            if mapping['_X'] == 1 or isinstance(mapping['_Y'], Num):
+        def foo(_X, _Y):
+            if _X == 1 or isinstance(_Y, Num):
                 return None
             else:
-                return Num(10 * mapping['_X'])
+                return Num(10 * _X)
         tree = parse('1 + (2 + (3 + (4 + 5)))')
         pattern = BinOp(Num(PatVar('_X')), Add(), PatVar('_Y'))
         # Matching should skip 1 + ..., then hit 2 + ... without

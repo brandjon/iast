@@ -1,5 +1,9 @@
 """Pattern-matching and unificaiton for struct ASTs."""
 
+# IDEA: Could exploit the fact that Python expressions never contain
+# statements, to avoid descending into expressions when trying to
+# match a statement.
+
 
 import ast
 import itertools
@@ -190,7 +194,7 @@ class Substitutor(NodeTransformer):
         self.pattern = pattern
         # Normalize repl into function form.
         if isinstance(repl, AST):
-            self.repl = lambda mapping: VarExpander.run(repl, mapping)
+            self.repl = lambda **mapping: VarExpander.run(repl, mapping)
         else:
             self.repl = repl
     
@@ -199,7 +203,7 @@ class Substitutor(NodeTransformer):
         if mapping is not None:
             # Match. Consult repl, if it returns None,
             # skip the match and continue recursing.
-            result = self.repl(mapping)
+            result = self.repl(**mapping)
             if result is None:
                 result = super().visit(tree)
             return result
@@ -211,7 +215,7 @@ def sub(pattern, repl, tree):
     tree are replaced according to repl. If repl is an AST, its PatVars
     get instantiated by the parts of the tree that matched the same
     PatVars in pattern. Otherwise, repl must be a callable that takes
-    in the match mapping and produces a tree, or returns None to ignore
-    this match.
+    in the pattern variables as keyword arguments and produces a tree,
+    or returns None to ignore this match.
     """
     return Substitutor.run(tree, pattern, repl)
