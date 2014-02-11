@@ -1,11 +1,10 @@
-"""Pattern-matching and unificaiton for struct ASTs."""
+"""Pattern-matching and unification for struct ASTs."""
 
 # IDEA: Could exploit the fact that Python expressions never contain
 # statements, to avoid descending into expressions when trying to
 # match a statement.
 
 
-import ast
 import itertools
 
 from iast.node import AST

@@ -40,6 +40,13 @@ class PylangCase(unittest.TestCase):
         with self.assertRaises(ValueError):
             extract_mod(parse('pass'), mode='expr')
     
+    def testNameExp(self):
+        tree = parse('a = b + c')
+        subst = {'b': Name('c', Load()), 'c': Name('d', Load())}
+        tree = NameExpander.run(tree, subst)
+        exp_tree = parse('a = c + d')
+        self.assertEqual(tree, exp_tree)
+    
     def testMacro(self):
         class Foo(MacroProcessor):
             def handle_ms_foo(self, f, args):

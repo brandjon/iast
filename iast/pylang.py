@@ -2,11 +2,13 @@
 
 
 from iast.node import Expr, Call, Name, Load, Attribute
+from iast.visitor import NodeTransformer
 from iast.pattern import PatVar, PatternTransformer
 
 
 __all__ = [
     'extract_mod',
+    'NameExpander',
     'MacroProcessor',
 ]
 
@@ -54,6 +56,17 @@ def extract_mod(tree, mode=None):
         raise ValueError('Unknown parse mode "' + mode + '"')
     
     return tree
+
+
+class NameExpander(NodeTransformer):
+    
+    """Replace names with ASTs according to the given mapping."""
+    
+    def __init__(self, subst):
+        self.subst = subst
+    
+    def visit_Name(self, node):
+        return self.subst.get(node.id, None)
 
 
 class MacroProcessor(PatternTransformer):
