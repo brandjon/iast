@@ -9,11 +9,13 @@ from iast.pattern import *
 from iast.pattern import match_step
 
 
-def pat(source):
-    return PatMaker.run(parse(source))
-
-
 class PatternCase(unittest.TestCase):
+    
+    def setUp(self):
+        self.patmaker = PatMaker()
+    
+    def pat(self, source):
+        return self.patmaker.process(parse(source))
     
     def testMatchStep(self):
         # Simple.
@@ -52,7 +54,8 @@ class PatternCase(unittest.TestCase):
             match_step((1, 2), (1, 2, 3))
     
     def testMatch(self):
-        mapping = match(pat('((_X, _Y), _Z)'), pat('((1, _Z), 2)'))
+        mapping = match(self.pat('((_X, _Y), _Z + _)'),
+                        self.pat('((1, _Z), 2 + 3)'))
         exp_mapping = {
             '_X': Num(1),
             '_Y': Num(2),

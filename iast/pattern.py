@@ -2,6 +2,7 @@
 
 
 import ast
+import itertools
 
 from iast.node import AST
 from iast.visitor import NodeVisitor, NodeTransformer
@@ -28,6 +29,10 @@ class PatVar(pattern):
     
     _fields = ('id',)
 
+def is_wildname(id):
+    # Wildcards begin with two underscores.
+    return id.startswith('__')
+
 
 class PatMaker(NodeTransformer):
     
@@ -35,8 +40,13 @@ class PatMaker(NodeTransformer):
     Names that begin with an underscore are considered pattern vars.
     """
     
+    def __init__(self):
+        self.wildname = ('__' + str(i) for i in itertools.count())
+    
     def visit_Name(self, node):
-        if node.id.startswith('_'):
+        if node.id == '_':
+            return PatVar(next(self.wildname))
+        elif node.id.startswith('_'):
             return PatVar(node.id)
 
 class VarExpander(NodeTransformer):
@@ -154,5 +164,10 @@ def match(tree1, tree2):
         eqs.extend(new_eqs)
         for var, repl in new_bindings.items():
             bindvar(var, repl)
+    
+    # Remove wildcard bindings.
+    for k in list(result.keys()):
+        if is_wildname(k):
+            del result[k]
     
     return result
