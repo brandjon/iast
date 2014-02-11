@@ -72,39 +72,39 @@ for name, pnode in py_nodes.items():
     __all__.append(name)
 
 
-def convert_ast(value, to_struct):
+def convert_ast(tree, to_struct):
     """Convert between Python AST nodes and struct nodes.
-    The direction is given by to_struct. value may be a node,
-    list of nodes, or non-node value.
+    The direction is given by to_struct. tree may be a node,
+    list of nodes, or non-node tree.
     """
     base = ast.AST if to_struct else AST
     mapping = struct_nodes if to_struct else py_nodes
     seqtype = tuple if to_struct else list
     
-    if isinstance(value, base):
-        name = value.__class__.__name__
+    if isinstance(tree, base):
+        name = tree.__class__.__name__
         out_type = mapping[name]
         field_values = []
-        for field in value._fields:
-            fval = getattr(value, field, None)
+        for field in tree._fields:
+            fval = getattr(tree, field, None)
             fval = convert_ast(fval, to_struct)
             field_values.append(fval)
-        new_value = out_type(*field_values)
-        return new_value
-    elif isinstance(value, (list, tuple)):
-        return seqtype(convert_ast(item, to_struct) for item in value)
+        new_tree = out_type(*field_values)
+        return new_tree
+    elif isinstance(tree, (list, tuple)):
+        return seqtype(convert_ast(item, to_struct) for item in tree)
     else:
-        return value
+        return tree
 
-def pyToStruct(value):
+def pyToStruct(tree):
     """Turn a Python AST to a struct AST."""
-    assert isinstance(value, ast.AST)
-    return convert_ast(value, to_struct=True)
+    assert isinstance(tree, ast.AST)
+    return convert_ast(tree, to_struct=True)
 
-def structToPy(value):
+def structToPy(tree):
     """Turn a struct AST to a Python AST."""
-    assert isinstance(value, AST)
-    return convert_ast(value, to_struct=False)
+    assert isinstance(tree, AST)
+    return convert_ast(tree, to_struct=False)
 
 def parse(source):
     """Like ast.parse(), but produce a struct AST."""
@@ -113,21 +113,21 @@ def parse(source):
     return tree
 
 
-def dump(value, col=0):
+def dump(tree, col=0):
     """A multi-line struct-AST pretty-printer."""
-    if isinstance(value, AST):
-        functor = value.__class__.__name__ + '('
+    if isinstance(tree, AST):
+        functor = tree.__class__.__name__ + '('
         newcol = col + len(functor)
         delim = ',\n' + (' ' * newcol)
         return (functor +
                 delim.join(key + ' = ' + dump(item, len(key) + 3 + newcol)
-                           for key, item in value._asdict().items()) +
+                           for key, item in tree._asdict().items()) +
                 ')')
-    elif isinstance(value, tuple):
+    elif isinstance(tree, tuple):
         newcol = col + 1
         delim = ',\n' + (' ' * newcol)
         return ('[' +
-                delim.join(dump(item, newcol) for item in value) +
+                delim.join(dump(item, newcol) for item in tree) +
                 ']')
     else:
-        return repr(value)
+        return repr(tree)

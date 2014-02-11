@@ -194,23 +194,24 @@ class Substitutor(NodeTransformer):
         else:
             self.repl = repl
     
-    def visit(self, value):
-        mapping = match(self.pattern, value)
+    def visit(self, tree):
+        mapping = match(self.pattern, tree)
         if mapping is not None:
             # Match. Consult repl, if it returns None,
             # skip the match and continue recursing.
             result = self.repl(mapping)
             if result is None:
-                result = super().visit(value)
+                result = super().visit(tree)
             return result
         else:
-            return super().visit(value)
+            return super().visit(tree)
 
 def sub(pattern, repl, tree):
     """Analogous to re.sub(). All outermost occurrences of pattern in
     tree are replaced according to repl. If repl is an AST, its PatVars
     get instantiated by the parts of the tree that matched the same
     PatVars in pattern. Otherwise, repl must be a callable that takes
-    in the match mapping and produces a tree.
+    in the match mapping and produces a tree, or returns None to ignore
+    this match.
     """
     return Substitutor.run(tree, pattern, repl)

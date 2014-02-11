@@ -22,32 +22,32 @@ class NodeVisitor:
     """
     
     @classmethod
-    def run(cls, value, *args, **kargs):
+    def run(cls, tree, *args, **kargs):
         """Convenience method for instantiating the class and running
-        the visitor on value. args and kargs are passed on to the
+        the visitor on tree. args and kargs are passed on to the
         constructor.
         """
         visitor = cls(*args, **kargs)
-        result = visitor.process(value)
+        result = visitor.process(tree)
         return result
     
-    def process(self, value):
+    def process(self, tree):
         """Entry point for invoking the visitor."""
         self._visit_stack = []
-        result = self.visit(value)
+        result = self.visit(tree)
         assert len(self._visit_stack) == 0, 'Visit stack unbalanced'
         return result
     
-    def visit(self, value):
+    def visit(self, tree):
         """Dispatch on a node or sequence (tuple). Other kinds
         of values are returned without processing.
         """
-        if isinstance(value, AST):
-            return self.node_visit(value)
-        elif isinstance(value, tuple):
-            return self.seq_visit(value)
+        if isinstance(tree, AST):
+            return self.node_visit(tree)
+        elif isinstance(tree, tuple):
+            return self.seq_visit(tree)
         else:
-            return value
+            return tree
     
     def node_visit(self, node):
         """Dispatch to a particular node kind's visit method,
@@ -87,12 +87,12 @@ class NodeTransformer(NodeVisitor):
     node.
     """
     
-    def process(self, value):
+    def process(self, tree):
         # Intercept None returns, interpret them as leaving the
-        # value unchanged.
-        result = super().process(value)
+        # tree unchanged.
+        result = super().process(tree)
         if result is None:
-            result = value
+            result = tree
         return result
     
     def seq_visit(self, seq):
