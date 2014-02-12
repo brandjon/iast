@@ -3,6 +3,8 @@
 
 import unittest
 
+from simplestruct.util import trim
+
 from iast.node import parse, Name, Load, Expr, Module, Tuple, Pass, Num
 
 from iast.pylang import *
@@ -58,6 +60,25 @@ class PylangCase(unittest.TestCase):
         tree = parse('o.foo(bar(1))')
         tree = Foo.run(tree)
         exp_tree = parse('(o, 5)')
+        self.assertEqual(tree, exp_tree)
+    
+    def testPyMacro(self):
+        # Basic.
+        tree = parse('BinOp(4, Add(), 5)')
+        tree = PyMacroProcessor.run(tree)
+        exp_tree = parse('4 + 5')
+        self.assertEqual(tree, exp_tree)
+        
+        # Statements.
+        tree = extract_mod(parse(
+                'If(True, Seq(Expr(print(1))), Seq(Pass()))'), 'expr')
+        tree = PyMacroProcessor.run(tree)
+        exp_tree = extract_mod(parse(trim('''
+            if True:
+                print(1)
+            else:
+                pass
+            ''')), 'stmt')
         self.assertEqual(tree, exp_tree)
 
 

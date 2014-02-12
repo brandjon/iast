@@ -1,7 +1,8 @@
 """Templating system for substituting ASTs and creating AST macros."""
 
 
-from iast.node import Expr, Call, Name, Load, Attribute
+from iast.node import (AST, struct_nodes, stmt, expr,
+                       Expr, Call, Name, Load, Attribute)
 from iast.visitor import NodeTransformer
 from iast.pattern import PatVar, PatternTransformer
 
@@ -10,6 +11,7 @@ __all__ = [
     'extract_mod',
     'NameExpander',
     'MacroProcessor',
+    'PyMacroProcessor',
 ]
 
 
@@ -131,3 +133,46 @@ class MacroProcessor(PatternTransformer):
                     (self.meth_expr_pattern, self.dispatch_meth),
                     (self.meth_stmt_pattern, self.dispatch_meth)]
         super().__init__(patrepls)
+
+
+class Seq(AST):
+    
+    """Dummy node to temporarily represent tuples,
+    since they get flattened by NodeTransformer.
+    """
+    
+    _fields = ('elts',)
+
+class SeqEliminator(NodeTransformer):
+    
+    """Replace Seq with actual tuples."""
+    
+    def visit_Seq(self, node):
+        return node.elts
+
+class PyMacroProcessor(MacroProcessor):
+    
+    """Provides fs and fe handlers for constructing statement and
+    expression nodes from source text. This can be a convenient
+    alternative to constructing an AST imperatively, or substituting
+    placeholders with ASTs.
+    """
+    
+    # Common helper for all nodes. Programmatically define handler
+    # aliases for each node it is used with.
+    def helper(self, name, args):
+        return struct_nodes[name](*args)
+    
+    # Helper for producing tuples.
+    def handle_fe_Seq(self, name, args):
+        return Seq(args)
+    
+    def process(self, tree):
+        tree = super().process(tree)
+        tree = SeqEliminator.run(tree)
+        return tree
+
+for name, snode in struct_nodes.items():
+    (base,) = snode.__bases__
+    setattr(PyMacroProcessor, 'handle_fe_' + name,
+            PyMacroProcessor.helper)
