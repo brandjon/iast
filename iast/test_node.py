@@ -22,6 +22,8 @@ class NodeCase(unittest.TestCase):
     def testNodeFromPyNode(self):
         node = Name('a', Load())
         self.assertEqual(str(node), 'Name(id=a, ctx=Load())')
+        
+        self.assertEqual(Name.__bases__, (expr,))
     
     def testImport(self):
         tree = ast.parse('a')

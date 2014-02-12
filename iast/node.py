@@ -70,6 +70,14 @@ for name, pnode in py_nodes.items():
     globals()[pnode.__name__] = snode
     struct_nodes[name] = snode
     __all__.append(name)
+# Fix bases (must happen after since bases aren't necessarily
+# transferred before subclasses).
+for name, snode in struct_nodes.items():
+    if name == 'AST':
+        continue
+    (base,) = py_nodes[name].__bases__
+    base = struct_nodes[base.__name__]
+    snode.__bases__ = (base,)
 
 
 def convert_ast(tree, to_struct):
