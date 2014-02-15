@@ -51,10 +51,9 @@ class PylangCase(unittest.TestCase):
     
     def testMacro(self):
         class Foo(MacroProcessor):
-            def handle_ms_foo(self, f, args):
-                if len(args) > 1:
-                    return Tuple(args, Load())
-            def handle_fe_bar(self, f, args):
+            def handle_ms_foo(self, f, rec, arg):
+                return Expr(Tuple((rec, arg), Load()))
+            def handle_fe_bar(self, f, arg):
                 return Num(5)
         
         tree = parse('o.foo(bar(1))')
