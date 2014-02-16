@@ -1,11 +1,13 @@
 """Templating system for substituting ASTs and creating AST macros."""
 
 
-from inspect import signature
-from functools import partial
+from inspect import signature, Parameter
+from functools import partial, wraps
+
+from simplestruct.type import checktype
 
 from iast.node import (AST, struct_nodes, stmt, expr,
-                       Expr, Call, Name, Load, Attribute)
+                       Expr, Call, Name, Load, Attribute, Str)
 from iast.visitor import NodeTransformer
 from iast.pattern import PatVar, PatternTransformer
 
@@ -15,6 +17,7 @@ __all__ = [
     'NameExpander',
     'MacroProcessor',
     'PyMacroProcessor',
+    'astargs',
 ]
 
 
@@ -208,3 +211,24 @@ for name, snode in struct_nodes.items():
     (base,) = snode.__bases__
     setattr(PyMacroProcessor, 'handle_fe_' + name,
             PyMacroProcessor.helper)
+
+
+def astargs(func):
+    """Decorator to automatically unwrap AST arguments."""
+    sig = signature(func)
+    @wraps(func)
+    def f(*args, **kargs):
+        ba = sig.bind(*args, **kargs)
+        for name, val in ba.arguments.items():
+            ann = sig.parameters[name].annotation
+            
+            if ann is Parameter.empty:
+                pass
+            
+            elif ann == 'Str':
+                checktype(val, Str)
+                ba.arguments[name] = val.s
+        
+        return func(*ba.args, **ba.kwargs)
+    
+    return f

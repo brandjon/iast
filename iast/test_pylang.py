@@ -5,7 +5,7 @@ import unittest
 
 from simplestruct.util import trim
 
-from iast.node import parse, Name, Load, Expr, Module, Tuple, Pass, Num
+from iast.node import parse, Name, Load, Expr, Module, Tuple, Pass, Num, Str
 
 from iast.pylang import *
 
@@ -79,6 +79,16 @@ class PylangCase(unittest.TestCase):
                 pass
             ''')), 'stmt')
         self.assertEqual(tree, exp_tree)
+    
+    def testASTArgs(self):
+        @astargs
+        def foo(a, b:'Str'):
+            return a + b
+        res = foo('x', Str('y'))
+        self.assertEqual(res, 'xy')
+        
+        with self.assertRaises(TypeError):
+            foo('x', 'y')
 
 
 if __name__ == '__main__':
