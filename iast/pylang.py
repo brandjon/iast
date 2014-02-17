@@ -6,13 +6,15 @@ from functools import partial, wraps
 
 from simplestruct.type import checktype
 
-from iast.node import (AST, struct_nodes, stmt, expr,
-                       Expr, Call, Name, Load, Attribute, Str, List, Tuple)
+from iast.node import (AST, struct_nodes, stmt, expr, Store,
+                       Expr, Call, Name, Load, Attribute, Str, List, Tuple,
+                       Attribute, Subscript, Starred, Module)
 from iast.visitor import NodeTransformer
 from iast.pattern import PatVar, PatternTransformer
 
 
 __all__ = [
+    'ContextSetter',
     'extract_mod',
     'NameExpander',
     'MacroProcessor',
@@ -21,19 +23,61 @@ __all__ = [
 ]
 
 
+class ContextSetter(NodeTransformer):
+    
+    """Propagate context type ctx to the appropriate nodes of an
+    expression tree. Mirrors the behavior of set_context() in
+    Python/ast.c. Specifically, nodes that have a context field
+    get assigned a context of ctx, and Starred, List, and Tuple
+    nodes also propagate ctx recursively.
+    """
+    
+    def __init__(self, ctx):
+        # Type, not instance.
+        self.ctx = ctx
+    
+    def basic(self, node):
+        return node._replace(ctx=self.ctx())
+    
+    def recur(self, node):
+        node = self.generic_visit(node)
+        node = node._replace(ctx=self.ctx())
+        return node
+    
+    visit_Attribute = basic
+    visit_Subscript = basic
+    visit_Name = basic
+    
+    visit_Starred = recur
+    visit_List = recur
+    visit_Tuple = recur
+
+
 def extract_mod(tree, mode=None):
     """Process a tree to extract a subtree of the top-level
-    Module node. Mode is one of the following strings:
+    Module node. The part to return is selected by mode.
     
-        - mod:     the tree is returned unchanged (default)
-        - code:    the Module's list of statements is returned
-        - stmt_or_blank:  either a single statement or None is returned
-        - stmt:    a single statement is returned. The Module must have
-                       exactly one top-level statement.
-        - expr:    an expression is returned. The Module must have
-                       exactly one top-level statement, that is an
-                       Expr node.
+        mod:
+          Return the original tree, unchanged. (default)
+        
+        code:
+          Get the list of top-level statements.
+        
+        stmt_or_blank:
+          The one top-level statement, or None if there are
+          no statements.
+        
+        stmt:
+          The one top-level statement.
+        
+        expr:
+          The one top-level expression.
+        
+        lval:
+          The one top-level expression, in Store context.
     """
+    checktype(tree, Module)
+    
     if mode == 'mod' or mode is None:
         pass
     
@@ -49,16 +93,19 @@ def extract_mod(tree, mode=None):
             raise ValueError('Mode "{}" requires zero or one statements '
                              '(got {})'.format(mode, len(tree.body)))
         
-    elif mode in ['stmt', 'expr']:
+    elif mode in ['stmt', 'expr', 'lval']:
         if len(tree.body) != 1:
             raise ValueError('Mode "{}" requires exactly one statement '
                              '(got {})'.format(mode, len(tree.body)))
         tree = tree.body[0]
-        if mode == 'expr':
+        if mode in ['expr', 'lval']:
             if not isinstance(tree, Expr):
                 raise ValueError('Mode "{}" requires Expr node (got {})'
                                  .format(mode, type(tree).__name__))
             tree = tree.value
+            
+            if mode == 'lval':
+                tree = ContextSetter.run(tree, Store)
     
     elif mode is not None:
         raise ValueError('Unknown parse mode "' + mode + '"')

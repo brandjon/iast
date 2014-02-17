@@ -5,12 +5,20 @@ import unittest
 
 from simplestruct.util import trim
 
-from iast.node import parse, Name, Load, Expr, Module, Tuple, Pass, Num, Str
+from iast.node import (parse, Name, Load, Expr, Module,
+                       Tuple, Pass, Num, Str, Store)
 
 from iast.pylang import *
 
 
 class PylangCase(unittest.TestCase):
+    
+    def testCtx(self):
+        tree = extract_mod(parse('(x, [y, z], *(q, r.f))'), mode='expr')
+        tree = ContextSetter.run(tree, Store)
+        exp_tree = parse('(x, [y, z], *(q, r.f)) = None')
+        exp_tree = extract_mod(exp_tree, mode='stmt').targets[0]
+        self.assertEqual(tree, exp_tree)
     
     def testExtract(self):
         tree_in = parse('x')
@@ -41,6 +49,10 @@ class PylangCase(unittest.TestCase):
         self.assertEqual(tree_out, exp_tree_out)
         with self.assertRaises(ValueError):
             extract_mod(parse('pass'), mode='expr')
+        
+        tree_out = extract_mod(tree_in, mode='lval')
+        exp_tree_out = Name('x', Store())
+        self.assertEqual(tree_out, exp_tree_out)
     
     def testNameExp(self):
         tree = parse('a = b + c')
