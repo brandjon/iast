@@ -7,7 +7,7 @@ from functools import partial, wraps
 from simplestruct.type import checktype
 
 from iast.node import (AST, struct_nodes, stmt, expr,
-                       Expr, Call, Name, Load, Attribute, Str)
+                       Expr, Call, Name, Load, Attribute, Str, List, Tuple)
 from iast.visitor import NodeTransformer
 from iast.pattern import PatVar, PatternTransformer
 
@@ -34,7 +34,7 @@ def extract_mod(tree, mode=None):
                        exactly one top-level statement, that is an
                        Expr node.
     """
-    if mode == 'mod':
+    if mode == 'mod' or mode is None:
         pass
     
     elif mode == 'code':
@@ -228,6 +228,12 @@ def astargs(func):
             elif ann == 'Str':
                 checktype(val, Str)
                 ba.arguments[name] = val.s
+            
+            elif ann == 'ids':
+                if not (isinstance(val, (List, Tuple)) and
+                        all(isinstance(e, Name) for e in val.elts)):
+                    raise TypeError('Expected list of identifiers')
+                ba.arguments[name] = tuple(v.id for v in val.elts)
         
         return func(*ba.args, **ba.kwargs)
     

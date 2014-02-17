@@ -89,6 +89,12 @@ class PylangCase(unittest.TestCase):
         
         with self.assertRaises(TypeError):
             foo('x', 'y')
+        
+        @astargs
+        def foo(a:'ids'):
+            return ', '.join(a)
+        res = foo(extract_mod(parse('[a, b, c]'), 'expr'))
+        self.assertEqual(res, 'a, b, c')
 
 
 if __name__ == '__main__':

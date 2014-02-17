@@ -8,6 +8,7 @@ import ast
 from collections import OrderedDict
 
 from simplestruct import Struct, Field, MetaStruct
+from simplestruct.util import trim
 
 
 __all__ = [
@@ -115,7 +116,9 @@ def structToPy(tree):
     return convert_ast(tree, to_struct=False)
 
 def parse(source):
-    """Like ast.parse(), but produce a struct AST."""
+    """Like ast.parse(), but produce a struct AST. Works with indented
+    triple-quoted literals (via simplestruct.trim())."""
+    source = trim(source)
     tree = ast.parse(source)
     tree = pyToStruct(tree)
     return tree
