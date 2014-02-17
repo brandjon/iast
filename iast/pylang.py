@@ -115,13 +115,22 @@ def extract_mod(tree, mode=None):
 
 class NameExpander(NodeTransformer):
     
-    """Replace names with ASTs according to the given mapping."""
+    """Replace names with ASTs according to the given mapping.
+    Also allows replacing attribute names.
+    """
     
     def __init__(self, subst):
         self.subst = subst
     
     def visit_Name(self, node):
         return self.subst.get(node.id, None)
+    
+    def visit_Attribute(self, node):
+        node = self.generic_visit(node)
+        new_attr= self.subst.get('@' + node.attr, None)
+        if new_attr:
+            node = node._replace(attr=new_attr)
+        return node
 
 
 class MacroProcessor(PatternTransformer):

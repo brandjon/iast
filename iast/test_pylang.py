@@ -60,6 +60,12 @@ class PylangCase(unittest.TestCase):
         tree = NameExpander.run(tree, subst)
         exp_tree = parse('a = c + d')
         self.assertEqual(tree, exp_tree)
+        
+        tree = parse('a.foo.foo')
+        subst = {'@foo': 'bar'}
+        tree = NameExpander.run(tree, subst)
+        exp_tree = parse('a.bar.bar')
+        self.assertEqual(tree, exp_tree)
     
     def testMacro(self):
         class Foo(MacroProcessor):
