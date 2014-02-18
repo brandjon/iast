@@ -74,6 +74,26 @@ class PylangCase(unittest.TestCase):
         exp_tree = parse('def bar(x): return foo(x)')
         self.assertEqual(tree, exp_tree)
     
+    def testLitEval(self):
+        # Basic.
+        tree = parse('(1 + 2) * 5')
+        tree = extract_mod(tree, 'expr')
+        val = literal_eval(tree)
+        self.assertEqual(val, 15)
+        
+        # Comparators, names.
+        tree = parse('1 < 2 == -~1 and True and None is None')
+        tree = extract_mod(tree, 'expr')
+        val = literal_eval(tree)
+        self.assertEqual(val, True)
+        
+        # Collections.
+        tree = parse('[1, 2], {3, 4}, {5: "a", 6: "b"}')
+        tree = extract_mod(tree, 'expr')
+        val = literal_eval(tree)
+        exp_val = [1, 2], {3, 4}, {5: 'a', 6: 'b'}
+        self.assertEqual(val, exp_val)
+    
     def testMacro(self):
         class Foo(MacroProcessor):
             def handle_ms_foo(self, f, rec, arg):

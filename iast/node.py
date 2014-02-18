@@ -115,6 +115,7 @@ def structToPy(tree):
     assert isinstance(tree, AST)
     return convert_ast(tree, to_struct=False)
 
+
 def parse(source):
     """Like ast.parse(), but produce a struct AST. Works with indented
     triple-quoted literals (via simplestruct.trim())."""
