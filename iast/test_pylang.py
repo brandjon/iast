@@ -66,6 +66,12 @@ class PylangCase(unittest.TestCase):
         tree = NameExpander.run(tree, subst)
         exp_tree = parse('a.bar.bar')
         self.assertEqual(tree, exp_tree)
+        
+        tree = parse('def foo(x): return foo(x)')
+        subst = {'<def>foo': 'bar'}
+        tree = NameExpander.run(tree, subst)
+        exp_tree = parse('def bar(x): return foo(x)')
+        self.assertEqual(tree, exp_tree)
     
     def testMacro(self):
         class Foo(MacroProcessor):
@@ -81,7 +87,7 @@ class PylangCase(unittest.TestCase):
     
     def testPyMacro(self):
         # Basic.
-        tree = parse('BinOp(4, Add(), 5)')
+        tree = parse('BinOp(4, Add(), right=5)')
         tree = PyMacroProcessor.run(tree)
         exp_tree = parse('4 + 5')
         self.assertEqual(tree, exp_tree)

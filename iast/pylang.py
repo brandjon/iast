@@ -116,7 +116,9 @@ def extract_mod(tree, mode=None):
 class NameExpander(NodeTransformer):
     
     """Replace names with ASTs according to the given mapping.
-    Also allows replacing attribute names.
+    Also allows replacing attribute names and function definition
+    names, identified by special prefixes '@' and '<def>' in
+    the mapping.
     """
     
     def __init__(self, subst):
@@ -127,9 +129,16 @@ class NameExpander(NodeTransformer):
     
     def visit_Attribute(self, node):
         node = self.generic_visit(node)
-        new_attr= self.subst.get('@' + node.attr, None)
+        new_attr = self.subst.get('@' + node.attr, None)
         if new_attr:
             node = node._replace(attr=new_attr)
+        return node
+    
+    def visit_FunctionDef(self, node):
+        node = self.generic_visit(node)
+        new_name = self.subst.get('<def>' + node.name, None)
+        if new_name:
+            node = node._replace(name=new_name)
         return node
 
 
@@ -210,7 +219,7 @@ class MacroProcessor(PatternTransformer):
         _args = (_func,) + _args
         
         sig = signature(handler)
-        ba = sig.bind(*_args, **{kw: kwval for kw, kwval in _keywords})
+        ba = sig.bind(*_args, **{kw.arg: kw.value for kw in _keywords})
         return handler(*ba.args, **ba.kwargs)
     
     def __init__(self):
@@ -251,8 +260,8 @@ class PyMacroProcessor(MacroProcessor):
     
     # Common helper for all nodes. Programmatically define handler
     # aliases for each node it is used with.
-    def helper(self, name, *args):
-        return struct_nodes[name](*args)
+    def helper(self, name, *args, **kargs):
+        return struct_nodes[name](*args, **kargs)
     
     # Helper for producing tuples.
     def handle_fe_Seq(self, name, *args):
