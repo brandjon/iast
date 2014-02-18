@@ -14,7 +14,8 @@ from iast.visitor import NodeVisitor, NodeTransformer
 __all__ = [
     'MatchFailure',
     'PatVar',
-    'PatMaker',
+    'instantiate_wildcards',
+    'make_pattern',
     'raw_match',
     'match',
     'sub',
@@ -40,20 +41,50 @@ def is_wildname(id):
     return id.startswith('__')
 
 
-class PatMaker(NodeTransformer):
+def instantiate_wildcards(tree):
+    """Turn each occurrence of a wildcard PatVar into a uniquely-named
+    PatVar.
+    """
+    # We take care not to clash with an existing PatVar name
+    # (e.g. from a previously instantiated wildcard).
+    wildnames = ('__' + str(i) for i in itertools.count())
     
+    class PatVarFinder(NodeVisitor):
+        def process(self, tree):
+            self.ids = set()
+            super().process(tree)
+            return self.ids
+        def visit_PatVar(self, node):
+            self.ids.add(node.id)
+    
+    used = PatVarFinder.run(tree)
+    
+    class WildcardInstantiator(NodeTransformer):
+        def visit_PatVar(self, node):
+            if node.id == '_':
+                name = next(wildnames)
+                while name in used:
+                    name = next(wildnames)
+                return node._replace(id=name)
+    
+    tree = WildcardInstantiator.run(tree)
+    return tree
+
+def make_pattern(tree):
     """Make a pattern from an AST by replacing Name nodes with PatVars.
     Names that begin with an underscore are considered pattern vars.
+    Names of '_' are considered wildcards.
     """
     
-    def __init__(self):
-        self.wildname = ('__' + str(i) for i in itertools.count())
+    class NameToPatVar(NodeTransformer):
+        def visit_Name(self, node):
+            if node.id.startswith('_'):
+                return PatVar(node.id)
     
-    def visit_Name(self, node):
-        if node.id == '_':
-            return PatVar(next(self.wildname))
-        elif node.id.startswith('_'):
-            return PatVar(node.id)
+    tree = NameToPatVar.run(tree)
+    tree = instantiate_wildcards(tree)
+    return tree
+
 
 class VarExpander(NodeTransformer):
     

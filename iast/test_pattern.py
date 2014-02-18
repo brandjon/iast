@@ -11,11 +11,8 @@ from iast.pattern import match_step
 
 class PatternCase(unittest.TestCase):
     
-    def setUp(self):
-        self.patmaker = PatMaker()
-    
     def pat(self, source):
-        return self.patmaker.process(parse(source))
+        return make_pattern(parse(source))
     
     def pe(self, source):
         return parse(source).body[0].value
