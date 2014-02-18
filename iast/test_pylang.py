@@ -14,11 +14,19 @@ from iast.pylang import *
 
 class PylangCase(unittest.TestCase):
     
+    def pc(self, source):
+        return extract_mod(parse(source), 'code')
+    
+    def ps(self, source):
+        return extract_mod(parse(source), 'stmt')
+    
+    def pe(self, source):
+        return extract_mod(parse(source), 'expr')
+    
     def testCtx(self):
-        tree = extract_mod(parse('(x, [y, z], *(q, r.f))'), mode='expr')
+        tree = self.pe('(x, [y, z], *(q, r.f))')
         tree = ContextSetter.run(tree, Store)
-        exp_tree = parse('(x, [y, z], *(q, r.f)) = None')
-        exp_tree = extract_mod(exp_tree, mode='stmt').targets[0]
+        exp_tree = self.ps('(x, [y, z], *(q, r.f)) = None').targets[0]
         self.assertEqual(tree, exp_tree)
     
     def testExtract(self):
@@ -76,20 +84,17 @@ class PylangCase(unittest.TestCase):
     
     def testLitEval(self):
         # Basic.
-        tree = parse('(1 + 2) * 5')
-        tree = extract_mod(tree, 'expr')
+        tree = self.pe('(1 + 2) * 5')
         val = literal_eval(tree)
         self.assertEqual(val, 15)
         
         # Comparators, names.
-        tree = parse('1 < 2 == -~1 and True and None is None')
-        tree = extract_mod(tree, 'expr')
+        tree = self.pe('1 < 2 == -~1 and True and None is None')
         val = literal_eval(tree)
         self.assertEqual(val, True)
         
         # Collections.
-        tree = parse('[1, 2], {3, 4}, {5: "a", 6: "b"}')
-        tree = extract_mod(tree, 'expr')
+        tree = self.pe('[1, 2], {3, 4}, {5: "a", 6: "b"}')
         val = literal_eval(tree)
         exp_val = [1, 2], {3, 4}, {5: 'a', 6: 'b'}
         self.assertEqual(val, exp_val)
@@ -114,20 +119,18 @@ class PylangCase(unittest.TestCase):
         self.assertEqual(tree, exp_tree)
         
         # Statements.
-        tree = extract_mod(parse(
-                'If(True, Seq(Expr(print(1))), Seq(Pass()))'), 'expr')
+        tree = self.pe('If(True, Seq(Expr(print(1))), Seq(Pass()))')
         tree = PyMacroProcessor.run(tree)
-        exp_tree = extract_mod(parse(trim('''
+        exp_tree = self.ps('''
             if True:
                 print(1)
             else:
                 pass
-            ''')), 'stmt')
+            ''')
         self.assertEqual(tree, exp_tree)
         
         # Omitted arguments.
-        tree = parse('BinOp(4, right=5)')
-        tree = extract_mod(tree, 'expr')
+        tree = self.pe('BinOp(4, right=5)')
         tree = PyMacroProcessor.run(tree, patterns=True)
         exp_tree = BinOp(Num(4), PatVar('_'), Num(5))
         exp_tree = instantiate_wildcards(exp_tree)
@@ -146,7 +149,7 @@ class PylangCase(unittest.TestCase):
         @astargs
         def foo(a:'ids'):
             return ', '.join(a)
-        res = foo(extract_mod(parse('[a, b, c]'), 'expr'))
+        res = foo(self.pe('[a, b, c]'))
         self.assertEqual(res, 'a, b, c')
 
 
