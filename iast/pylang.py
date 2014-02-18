@@ -19,7 +19,7 @@ from iast.pattern import (PatVar, PatternTransformer,
 __all__ = [
     'ContextSetter',
     'extract_mod',
-    'NameExpander',
+    'Templater',
     'literal_eval',
     'MacroProcessor',
     'PyMacroProcessor',
@@ -229,12 +229,26 @@ def literal_eval(tree):
     return LiteralEvaluator.run(tree)
 
 
-class NameExpander(NodeTransformer):
+class Templater(NodeTransformer):
     
-    """Replace names with ASTs according to the given mapping.
-    Also allows replacing attribute names and function definition
-    names, identified by special prefixes '@' and '<def>' in
-    the mapping.
+    """Instantiate placeholders in the AST according to the given
+    mapping. The following kinds of mappings are recognized. In
+    all cases, the keys are strings.
+    
+        IDENT -> AST
+          Replace Name occurrences for identifier IDENT with an
+          arbitrary expression AST
+        
+        @ATTR1 -> ATTR2
+          Replace uses of attribute ATTR1 with ATTR2
+        
+        <def>IDENT1 -> IDENT2
+          In function definitions, replace the name of the defined
+          function IDENT1 with IDENT2
+        
+        <c>IDENT -> AST
+          Replace Name occurrences of IDENT with an arbitrary
+          code AST (i.e. tuple of statements)
     """
     
     def __init__(self, subst):
@@ -256,6 +270,14 @@ class NameExpander(NodeTransformer):
         if new_name:
             node = node._replace(name=new_name)
         return node
+    
+    def visit_Expr(self, node):
+        if isinstance(node.value, Name):
+            new_code = self.subst.get('<c>' + node.value.id)
+            if new_code is not None:
+                return new_code
+        
+        return self.generic_visit(node)
 
 
 class MacroProcessor(PatternTransformer):

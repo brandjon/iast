@@ -63,23 +63,29 @@ class PylangCase(unittest.TestCase):
         exp_tree_out = Name('x', Store())
         self.assertEqual(tree_out, exp_tree_out)
     
-    def testNameExp(self):
+    def testTemplater(self):
         tree = parse('a = b + c')
         subst = {'b': Name('c', Load()), 'c': Name('d', Load())}
-        tree = NameExpander.run(tree, subst)
+        tree = Templater.run(tree, subst)
         exp_tree = parse('a = c + d')
         self.assertEqual(tree, exp_tree)
         
         tree = parse('a.foo.foo')
         subst = {'@foo': 'bar'}
-        tree = NameExpander.run(tree, subst)
+        tree = Templater.run(tree, subst)
         exp_tree = parse('a.bar.bar')
         self.assertEqual(tree, exp_tree)
         
         tree = parse('def foo(x): return foo(x)')
         subst = {'<def>foo': 'bar'}
-        tree = NameExpander.run(tree, subst)
+        tree = Templater.run(tree, subst)
         exp_tree = parse('def bar(x): return foo(x)')
+        self.assertEqual(tree, exp_tree)
+        
+        tree = parse('Foo')
+        subst = {'<c>Foo': self.pc('pass')}
+        tree = Templater.run(tree, subst)
+        exp_tree = parse('pass')
         self.assertEqual(tree, exp_tree)
     
     def testLitEval(self):
