@@ -10,7 +10,8 @@ from iast.node import (AST, struct_nodes, stmt, expr, Store,
                        Expr, Call, Name, Load, Attribute, Str, List, Tuple,
                        Attribute, Subscript, Starred, Module)
 from iast.visitor import NodeTransformer
-from iast.pattern import PatVar, PatternTransformer
+from iast.pattern import (PatVar, PatternTransformer,
+                          instantiate_wildcards)
 
 
 __all__ = [
@@ -258,10 +259,23 @@ class PyMacroProcessor(MacroProcessor):
     placeholders with ASTs.
     """
     
+    def __init__(self, patterns=False):
+        super().__init__()
+        self.patterns = patterns
+    
     # Common helper for all nodes. Programmatically define handler
     # aliases for each node it is used with.
     def helper(self, name, *args, **kargs):
-        return struct_nodes[name](*args, **kargs)
+        nodecls = struct_nodes[name]
+        if self.patterns:
+            sig = nodecls._signature
+            ba = sig.bind_partial(*args, **kargs)
+            for param in sig.parameters:
+                if param not in ba.arguments:
+                    ba.arguments[param] = PatVar('_')
+            args, kargs = ba.args, ba.kwargs
+        
+        return nodecls(*args, **kargs)
     
     # Helper for producing tuples.
     def handle_fe_Seq(self, name, *args):
@@ -270,6 +284,8 @@ class PyMacroProcessor(MacroProcessor):
     def process(self, tree):
         tree = super().process(tree)
         tree = SeqEliminator.run(tree)
+        if self.patterns:
+            tree = instantiate_wildcards(tree)
         return tree
 
 for name, snode in struct_nodes.items():

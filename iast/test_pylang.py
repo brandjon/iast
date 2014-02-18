@@ -6,7 +6,8 @@ import unittest
 from simplestruct.util import trim
 
 from iast.node import (parse, Name, Load, Expr, Module,
-                       Tuple, Pass, Num, Str, Store)
+                       Tuple, Pass, Num, Str, Store, BinOp)
+from iast.pattern import PatVar, instantiate_wildcards
 
 from iast.pylang import *
 
@@ -102,6 +103,14 @@ class PylangCase(unittest.TestCase):
             else:
                 pass
             ''')), 'stmt')
+        self.assertEqual(tree, exp_tree)
+        
+        # Omitted arguments.
+        tree = parse('BinOp(4, right=5)')
+        tree = extract_mod(tree, 'expr')
+        tree = PyMacroProcessor.run(tree, patterns=True)
+        exp_tree = BinOp(Num(4), PatVar('_'), Num(5))
+        exp_tree = instantiate_wildcards(exp_tree)
         self.assertEqual(tree, exp_tree)
     
     def testASTArgs(self):
