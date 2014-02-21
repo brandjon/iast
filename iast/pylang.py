@@ -456,6 +456,9 @@ def astargs(func):
                         all(isinstance(e, Name) for e in val.elts)):
                     raise TypeError('Expected list of identifiers')
                 ba.arguments[name] = tuple(v.id for v in val.elts)
+            
+            else:
+                raise TypeError('Unknown astarg specifier "{}"'.format(ann))
         
         return func(*ba.args, **ba.kwargs)
     

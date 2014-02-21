@@ -157,6 +157,12 @@ class PylangCase(unittest.TestCase):
             return ', '.join(a) + ' : ' + b
         res = foo(self.pe('[a, b, c]'), self.pe('d'))
         self.assertEqual(res, 'a, b, c : d')
+        
+        @astargs
+        def foo(a:'err'):
+            pass
+        with self.assertRaises(TypeError):
+            foo(1)
 
 
 if __name__ == '__main__':
