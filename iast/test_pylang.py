@@ -153,10 +153,10 @@ class PylangCase(unittest.TestCase):
             foo('x', 'y')
         
         @astargs
-        def foo(a:'ids'):
-            return ', '.join(a)
-        res = foo(self.pe('[a, b, c]'))
-        self.assertEqual(res, 'a, b, c')
+        def foo(a:'ids', b:'Name'):
+            return ', '.join(a) + ' : ' + b
+        res = foo(self.pe('[a, b, c]'), self.pe('d'))
+        self.assertEqual(res, 'a, b, c : d')
 
 
 if __name__ == '__main__':
