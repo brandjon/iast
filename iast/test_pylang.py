@@ -65,9 +65,9 @@ class PylangCase(unittest.TestCase):
     
     def testTemplater(self):
         tree = parse('a = b + c')
-        subst = {'b': Name('c', Load()), 'c': Name('d', Load())}
+        subst = {'b': Name('c', Load()), 'c': Name('d', Load()), 'a': 'z'}
         tree = Templater.run(tree, subst)
-        exp_tree = parse('a = c + d')
+        exp_tree = parse('z = c + d')
         self.assertEqual(tree, exp_tree)
         
         tree = parse('a.foo.foo')

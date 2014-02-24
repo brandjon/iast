@@ -239,6 +239,10 @@ class Templater(NodeTransformer):
           Replace Name occurrences for identifier IDENT with an
           arbitrary expression AST
         
+        IDENT1 -> IDENT2
+          In Name occurrences, replace IDENT1 with IDENT2 while
+          leaving context unchanged.
+        
         @ATTR1 -> ATTR2
           Replace uses of attribute ATTR1 with ATTR2
         
@@ -255,7 +259,11 @@ class Templater(NodeTransformer):
         self.subst = subst
     
     def visit_Name(self, node):
-        return self.subst.get(node.id, None)
+        repl = self.subst.get(node.id, None)
+        if isinstance(repl, str):
+            return node._replace(id=repl)
+        else:
+            return repl
     
     def visit_Attribute(self, node):
         node = self.generic_visit(node)
