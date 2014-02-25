@@ -7,6 +7,7 @@ from iast.node import AST
 __all__ = [
     'NodeVisitor',
     'NodeTransformer',
+    'ChangeCounter',
 ]
 
 
@@ -143,3 +144,25 @@ class NodeTransformer(NodeVisitor):
             return None
         else:
             return node._replace(**repls)
+
+
+class ChangeCounter(NodeTransformer):
+    
+    """Transformer mixin that instruments the transformation to
+    record how much work is being done. Updates an external dictionary
+    with the number of new nodes visited and replaced.
+    """
+    
+    def __init__(self, instr, *args, **kargs):
+        super().__init__(*args, **kargs)
+        instr.setdefault('visited', 0)
+        instr.setdefault('changed', 0)
+        self.instr = instr
+    
+    def visit(self, tree):
+        self.instr['visited'] += 1
+        before = tree
+        tree = super().visit(tree)
+        if tree is not None and tree is not before:
+            self.instr['changed'] += 1
+        return tree

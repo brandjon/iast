@@ -61,6 +61,20 @@ class VisitorCase(unittest.TestCase):
         tree1 = (parse('pass'), parse('pass'))
         tree2 = Foo.run(tree1)
         self.assertEqual(tree1, tree2)
+    
+    def test_counter(self):
+        class Foo(ChangeCounter, NodeTransformer):
+            def visit_Name(self, node):
+                return node._replace(id=node.id * 2)
+        
+        instr = {}
+        tree = parse('a + b + c + "s"')
+        tree = Foo.run(tree, instr)
+        exp_tree = parse('aa + bb + cc + "s"')
+        
+        self.assertEqual(tree, exp_tree)
+        self.assertEqual(instr['visited'], 14)
+        self.assertEqual(instr['changed'], 9)
 
 
 if __name__ == '__main__':
