@@ -47,7 +47,7 @@ class NodeVisitor:
         elif isinstance(tree, tuple):
             return self.seq_visit(tree)
         else:
-            return tree
+            return self.other_visit(tree)
     
     def node_visit(self, node):
         """Dispatch to a particular node kind's visit method,
@@ -69,6 +69,10 @@ class NodeVisitor:
         """Dispatch to each item of a sequence."""
         for item in seq:
             self.visit(item)
+    
+    def other_visit(self, value):
+        """Dispatch to misc. non-AST, non-sequence values."""
+        return value
     
     def generic_visit(self, node):
         """Dispatch to each field of a node."""
@@ -118,6 +122,11 @@ class NodeTransformer(NodeVisitor):
             return tuple(new_seq)
         else:
             return None
+    
+    def other_visit(self, value):
+        # Ignore other values, make sure we don't consider them
+        # to be changed.
+        return None
     
     def generic_visit(self, node):
         # If children return non-None values, form a new node
