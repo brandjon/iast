@@ -48,7 +48,7 @@ class NodeVisitor:
         elif isinstance(tree, tuple):
             return self.seq_visit(tree)
         else:
-            return self.other_visit(tree)
+            return tree
     
     def node_visit(self, node):
         """Dispatch to a particular node kind's visit method,
@@ -71,10 +71,6 @@ class NodeVisitor:
         for item in seq:
             self.visit(item)
     
-    def other_visit(self, value):
-        """Dispatch to misc. non-AST, non-sequence values."""
-        return value
-    
     def generic_visit(self, node):
         """Dispatch to each field of a node."""
         for field in node._fields:
@@ -92,6 +88,14 @@ class NodeTransformer(NodeVisitor):
     node.
     """
     
+    # In the visitors, "no change" is indicated by returning None
+    # or by returning the exact same node as was given. Returning
+    # a node that is equal to ("==") but not identical to ("is")
+    # the given node is considered a change. This is for efficiency.
+    #
+    # So long as all children return no change, seq_visit() and
+    # generic_visit() return no change.
+    
     def process(self, tree):
         # Intercept None returns, interpret them as leaving the
         # tree unchanged.
@@ -101,10 +105,6 @@ class NodeTransformer(NodeVisitor):
         return result
     
     def seq_visit(self, seq):
-        # If everything comes back None, return None to avoid
-        # unnecessary work. If something comes back non-None,
-        # create a new sequence with the new values spliced in.
-        
         changed = False
         new_seq = []
         
@@ -112,7 +112,7 @@ class NodeTransformer(NodeVisitor):
             result = self.visit(item)
             if result is None:
                 result = item
-            else:
+            if result is not item:
                 changed = True
             if isinstance(result, (tuple, list)):
                 new_seq.extend(result)
@@ -122,26 +122,18 @@ class NodeTransformer(NodeVisitor):
         if changed:
             return tuple(new_seq)
         else:
-            return None
-    
-    def other_visit(self, value):
-        # Ignore other values, make sure we don't consider them
-        # to be changed.
-        return None
+            return seq
     
     def generic_visit(self, node):
-        # If children return non-None values, form a new node
-        # with the new child values.
-        
         repls = {}
         for field in node._fields:
             value = getattr(node, field)
             result = self.visit(value)
-            if result is not None:
+            if not (result is None or result is value):
                 repls[field] = result
         
         if len(repls) == 0:
-            return None
+            return node
         else:
             return node._replace(**repls)
 
