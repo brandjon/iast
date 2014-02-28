@@ -64,10 +64,11 @@ class PylangCase(unittest.TestCase):
         self.assertEqual(tree_out, exp_tree_out)
     
     def testTemplater(self):
-        tree = parse('a = b + c')
-        subst = {'b': Name('c', Load()), 'c': Name('d', Load()), 'a': 'z'}
+        tree = parse('a = b + c + d')
+        subst = {'a': 'a2', 'b': Name('b2', Load()),
+                 'c': 'c2', 'd': lambda s: s + '2'}
         tree = Templater.run(tree, subst)
-        exp_tree = parse('z = c + d')
+        exp_tree = parse('a2 = b2 + c2 + d2')
         self.assertEqual(tree, exp_tree)
         
         tree = parse('a.foo.foo')

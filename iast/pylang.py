@@ -237,33 +237,44 @@ class Templater(NodeTransformer):
     
         IDENT -> AST
           Replace Name occurrences for identifier IDENT with an
-          arbitrary expression AST
+          arbitrary expression AST.
         
         IDENT1 -> IDENT2
           In Name occurrences, replace IDENT1 with IDENT2 while
           leaving context unchanged.
         
+        IDENT -> func
+          In Name occurrences, replace IDENT with the result of
+          calling func(IDENT). The result may itself be an AST
+          or identifier string, as above.
+        
         @ATTR1 -> ATTR2
-          Replace uses of attribute ATTR1 with ATTR2
+          Replace uses of attribute ATTR1 with ATTR2.
         
         <def>IDENT1 -> IDENT2
           In function definitions, replace the name of the defined
-          function IDENT1 with IDENT2
+          function IDENT1 with IDENT2.
         
         <c>IDENT -> AST
           Replace Name occurrences of IDENT with an arbitrary
-          code AST (i.e. tuple of statements)
+          code AST (i.e. tuple of statements).
     """
     
     def __init__(self, subst):
         self.subst = subst
     
+    def name_helper(self, node, val):
+        if isinstance(val, str):
+            return node._replace(id=val)
+        elif isinstance(val, AST):
+            return val
+        else:
+            return self.name_helper(node, val(node.id))
+    
     def visit_Name(self, node):
         repl = self.subst.get(node.id, None)
-        if isinstance(repl, str):
-            return node._replace(id=repl)
-        else:
-            return repl
+        if repl is not None:
+            return self.name_helper(node, repl)
     
     def visit_Attribute(self, node):
         node = self.generic_visit(node)
