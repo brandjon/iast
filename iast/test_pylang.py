@@ -117,6 +117,21 @@ class PylangCase(unittest.TestCase):
         tree = Foo.run(tree)
         exp_tree = parse('(o, 5)')
         self.assertEqual(tree, exp_tree)
+        
+        class Foo(MacroProcessor):
+            def handle_fw_baz(self, f, arg, _body):
+                return (Pass(),) + _body
+        
+        tree = parse('''
+            with baz(1):
+                print(5)
+            ''')
+        tree = Foo.run(tree)
+        exp_tree = parse('''
+            pass
+            print(5)
+            ''')
+        self.assertEqual(tree, exp_tree)
     
     def testPyMacro(self):
         # Basic.
