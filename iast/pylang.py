@@ -10,7 +10,7 @@ from simplestruct.type import checktype
 
 from iast.node import (AST, struct_nodes, stmt, expr, Store, With, withitem,
                        Expr, Call, Name, Load, Attribute, Str, List, Tuple,
-                       Attribute, Subscript, Starred, Module, keyword)
+                       Attribute, Subscript, Starred, Module, keyword, Num)
 from iast.visitor import NodeVisitor, NodeTransformer
 from iast.pattern import (PatVar, PatternTransformer,
                           instantiate_wildcards)
@@ -488,6 +488,10 @@ def astargs(func):
             elif ann == 'Str':
                 checktype(val, Str)
                 ba.arguments[name] = val.s
+            
+            elif ann == 'Num':
+                checktype(val, Num)
+                ba.arguments[name] = val.n
             
             elif ann == 'Name':
                 checktype(val, Name)
