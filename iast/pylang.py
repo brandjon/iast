@@ -497,6 +497,10 @@ def astargs(func):
                 checktype(val, Name)
                 ba.arguments[name] = val.id
             
+            elif ann == 'List':
+                checktype(val, List)
+                ba.arguments[name] = val.elts
+            
             elif ann == 'ids':
                 if not (isinstance(val, (List, Tuple)) and
                         all(isinstance(e, Name) for e in val.elts)):
