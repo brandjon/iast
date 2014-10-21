@@ -1,8 +1,5 @@
 """Defines Struct-based versions of the standard Python nodes."""
 
-# TODO: for some reason it looks like calling type() directly
-# causes the struct nodes to have a __module__ of simplestruct.struct.
-
 
 import ast
 from collections import OrderedDict
@@ -66,7 +63,8 @@ struct_nodes = {'AST': AST}
 for name, pnode in py_nodes.items():
     if name == 'AST':
         continue
-    namespace = {'_fields': tuple(pnode._fields)}
+    namespace = {'__module__': __name__,
+                 '_fields': tuple(pnode._fields)}
     snode = type(pnode.__name__, (AST,), namespace)
     globals()[pnode.__name__] = snode
     struct_nodes[name] = snode
