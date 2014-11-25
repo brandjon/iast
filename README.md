@@ -1,7 +1,7 @@
 iAST
 ====
 
-*(Requires Python 3)*
+*(Requires Python 3.4)*
 
-This project includes tools for manipulating python Abstract Syntax
+This project includes tools for manipulating Python Abstract Syntax
 Trees, including defining custom nodes.

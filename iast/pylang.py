@@ -163,12 +163,6 @@ class LiteralEvaluator(NodeVisitor):
     
     """Helper for literal_eval."""
     
-    name_map = {
-        'None': None,
-        'False': False,
-        'True': True,
-    }
-    
     def seq_visit(self, seq):
         return seq
     
@@ -187,8 +181,8 @@ class LiteralEvaluator(NodeVisitor):
     def visit_Ellipsis(self, node):
         return Ellipsis
     
-    def visit_Name(self, node):
-        return self.name_map[node.id]
+    def visit_NameConstant(self, node):
+        return node.value
     
     def visit_Tuple(self, node):
         return tuple(self.visit(elt) for elt in node.elts)
