@@ -19,7 +19,7 @@ class PatternCase(unittest.TestCase):
     def pate(self, source):
         return self.pat(source).body[0].value
     
-    def testMatchStep(self):
+    def test_match_step(self):
         # Simple.
         result = match_step(PatVar('_X'), Num(1))
         exp_result = ([], {'_X': Num(1)})
@@ -55,7 +55,7 @@ class PatternCase(unittest.TestCase):
         with self.assertRaises(MatchFailure):
             match_step((1, 2), (1, 2, 3))
     
-    def testMatch(self):
+    def test_match(self):
         result = match(self.pat('((_X, _Y), _Z + _)'),
                        self.pat('((1, _Z), 2 + 3)'))
         exp_result = {
@@ -68,7 +68,7 @@ class PatternCase(unittest.TestCase):
         result = match(1, 2)
         self.assertEqual(result, None)
     
-    def testSub(self):
+    def test_sub(self):
         # Basic.
         tree = parse('print(1 + 2)')
         tree = sub(self.pate('_X + _Y'), self.pate('(5 * _X) + _Y'), tree)
@@ -97,7 +97,7 @@ class PatternCase(unittest.TestCase):
         exp_tree = parse('1 + 20')
         self.assertEqual(tree, exp_tree)
     
-    def testPatTrans(self):
+    def test_pattrans(self):
         pattern = BinOp(Num(PatVar('_X')), PatVar('_Op'), Num(PatVar('_Y')))
         repl = lambda _X, _Op, _Y: Num(_X + _Y) if _X < 5 else None
         

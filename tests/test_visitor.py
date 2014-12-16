@@ -10,7 +10,7 @@ from iast.visitor import *
 
 class VisitorCase(unittest.TestCase):
     
-    def testVisitor(self):
+    def test_visitor(self):
         class Foo(NodeVisitor):
             def process(self, tree):
                 self.names = set()
@@ -23,7 +23,7 @@ class VisitorCase(unittest.TestCase):
         result = Foo.run(tree)
         self.assertEqual(result, {'a', 'foo'})
     
-    def testTransformer(self):
+    def test_transformer(self):
         # Basic functionality.
         
         class Foo(NodeTransformer):

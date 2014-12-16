@@ -21,13 +21,13 @@ class PylangCase(unittest.TestCase):
     def pe(self, source):
         return extract_mod(parse(source), 'expr')
     
-    def testCtx(self):
+    def test_ctx(self):
         tree = self.pe('(x, [y, z], *(q, r.f))')
         tree = ContextSetter.run(tree, Store)
         exp_tree = self.ps('(x, [y, z], *(q, r.f)) = None').targets[0]
         self.assertEqual(tree, exp_tree)
     
-    def testExtract(self):
+    def test_extract(self):
         tree_in = parse('x')
         
         tree_out = extract_mod(tree_in, mode='mod')
@@ -61,7 +61,7 @@ class PylangCase(unittest.TestCase):
         exp_tree_out = Name('x', Store())
         self.assertEqual(tree_out, exp_tree_out)
     
-    def testTemplater(self):
+    def test_templater(self):
         tree = parse('a = b + c + d')
         subst = {'a': 'a2', 'b': Name('b2', Load()),
                  'c': 'c2', 'd': lambda s: s + '2'}
@@ -87,7 +87,7 @@ class PylangCase(unittest.TestCase):
         exp_tree = parse('pass')
         self.assertEqual(tree, exp_tree)
     
-    def testLitEval(self):
+    def test_liteval(self):
         # Basic.
         tree = self.pe('(1 + 2) * 5')
         val = literal_eval(tree)
@@ -104,7 +104,7 @@ class PylangCase(unittest.TestCase):
         exp_val = [1, 2], {3, 4}, {5: 'a', 6: 'b'}
         self.assertEqual(val, exp_val)
     
-    def testMacro(self):
+    def test_macro(self):
         class Foo(MacroProcessor):
             def handle_ms_foo(self, f, rec, arg):
                 return Expr(Tuple((rec, arg), Load()))
@@ -131,7 +131,7 @@ class PylangCase(unittest.TestCase):
             ''')
         self.assertEqual(tree, exp_tree)
     
-    def testPyMacro(self):
+    def test_pymacro(self):
         # Basic.
         tree = parse('BinOp(4, Add(), right=5)')
         tree = PyMacroProcessor.run(tree)
@@ -156,7 +156,7 @@ class PylangCase(unittest.TestCase):
         exp_tree = instantiate_wildcards(exp_tree)
         self.assertEqual(tree, exp_tree)
     
-    def testASTArgs(self):
+    def test_ast_args(self):
         @astargs
         def foo(a, b:'Str'):
             return a + b

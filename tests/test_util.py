@@ -8,7 +8,7 @@ from iast.util import *
 
 class UtilCase(unittest.TestCase):
     
-    def testTrim(self):
+    def test_trim(self):
         text1 = trim('''
             for x in foo:
                 print(x)

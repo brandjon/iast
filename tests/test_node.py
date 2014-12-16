@@ -12,27 +12,27 @@ from iast.node import *
 
 class NodeCase(unittest.TestCase):
     
-    def testNode(self):
+    def test_node(self):
         class Foo(AST):
             _fields = ('a', 'b', 'c')
             b = Field()
         node = Foo(1, 2, 3)
         self.assertEqual(str(node), 'Foo(a=1, b=2, c=3)')
     
-    def testNodeFromPyNode(self):
+    def test_node_from_pynode(self):
         node = Name('a', Load())
         self.assertEqual(str(node), 'Name(id=a, ctx=Load())')
         
         self.assertEqual(Name.__bases__, (expr,))
     
-    def testImport(self):
+    def test_import(self):
         tree = ast.parse('a')
         tree = pyToStruct(tree)
         exp_str = "Module(body=(Expr(value=Name(id='a', ctx=Load())),))"
         self.assertTrue(isinstance(tree, Struct))
         self.assertEqual(str(tree), exp_str)
     
-    def testExport(self):
+    def test_export(self):
         tree = ast.parse('a')
         exp_str = ast.dump(tree)
         tree = pyToStruct(tree)
@@ -40,7 +40,7 @@ class NodeCase(unittest.TestCase):
         self.assertTrue(isinstance(tree, ast.AST))
         self.assertEqual(ast.dump(tree), exp_str)
     
-    def testDump(self):
+    def test_dump(self):
         tree = parse('a, b = c')
         text = dump(tree)
         exp_text = trim('''
