@@ -3,10 +3,8 @@
 
 import unittest
 
-from simplestruct.util import trim
-
+from iast.util import trim
 from iast.node import parse, dump
-
 from iast.visitor import *
 
 

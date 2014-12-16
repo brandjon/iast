@@ -5,7 +5,8 @@ import ast
 from collections import OrderedDict
 
 from simplestruct import Struct, Field, MetaStruct
-from simplestruct.util import trim
+
+from .util import trim
 
 
 __all__ = [

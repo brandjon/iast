@@ -5,8 +5,8 @@ import unittest
 import ast
 
 from simplestruct import Struct, Field
-from simplestruct.util import trim
 
+from iast.util import trim
 from iast.node import *
 
 
