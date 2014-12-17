@@ -2,9 +2,8 @@
 
 
 import unittest
-import ast
 
-from simplestruct import Struct, Field
+from simplestruct import Field
 
 from iast.util import trim
 from iast.node import *
@@ -13,46 +12,39 @@ from iast.node import *
 class NodeCase(unittest.TestCase):
     
     def test_node(self):
+        # Define, construct, and repr.
         class Foo(AST):
             _fields = ('a', 'b', 'c')
             b = Field()
         node = Foo(1, 2, 3)
-        self.assertEqual(str(node), 'Foo(a=1, b=2, c=3)')
-    
-    def test_node_from_pynode(self):
-        node = Name('a', Load())
-        self.assertEqual(str(node), 'Name(id=a, ctx=Load())')
+        s = repr(node)
+        exp_s = 'Foo(a=1, b=2, c=3)'
+        self.assertEqual(s, exp_s)
         
-        self.assertEqual(Name.__bases__, (expr,))
-    
-    def test_import(self):
-        tree = ast.parse('a')
-        tree = pyToStruct(tree)
-        exp_str = "Module(body=(Expr(value=Name(id='a', ctx=Load())),))"
-        self.assertTrue(isinstance(tree, Struct))
-        self.assertEqual(str(tree), exp_str)
-    
-    def test_export(self):
-        tree = ast.parse('a')
-        exp_str = ast.dump(tree)
-        tree = pyToStruct(tree)
-        tree = structToPy(tree)
-        self.assertTrue(isinstance(tree, ast.AST))
-        self.assertEqual(ast.dump(tree), exp_str)
+        # Reconstruct the tree from repr.
+        node2 = eval(s, locals())
+        self.assertEqual(node2, node)
     
     def test_dump(self):
-        tree = parse('a, b = c')
-        text = dump(tree)
-        exp_text = trim('''
-            Module(body = [Assign(targets = [Tuple(elts = [Name(id = 'a',
-                                                                ctx = Store()),
-                                                           Name(id = 'b',
-                                                                ctx = Store())],
-                                                   ctx = Store())],
-                                  value = Name(id = 'c',
-                                               ctx = Load()))])
+        class Add(AST):
+            _fields = ['left', 'right']
+        class Sum(AST):
+            _fields = ['operands']
+        tree = Sum((Add(1, 2), Sum((3, 4,)), Sum((5,)), Sum(()),))
+        s = dump(tree)
+        exp_s = trim('''\
+            Sum(operands = (Add(left = 1,
+                                right = 2),
+                            Sum(operands = (3,
+                                            4)),
+                            Sum(operands = (5,)),
+                            Sum(operands = ())))
             ''')
-        self.assertEqual(text, exp_text)
+        self.assertEqual(s, exp_s)
+        
+        # Reconstruct the tree from dump.
+        tree2 = eval(s, locals())
+        self.assertEqual(tree2, tree)
 
 
 if __name__ == '__main__':

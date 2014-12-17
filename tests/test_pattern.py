@@ -3,7 +3,7 @@
 
 import unittest
 
-from iast.node import parse, Num, BinOp, Add
+from iast.pynode import parse, Num, BinOp, Add
 from iast.pattern import *
 from iast.pattern import match_step
 

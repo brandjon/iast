@@ -4,7 +4,8 @@
 import unittest
 
 from iast.util import trim
-from iast.node import parse, dump
+from iast.node import dump
+from iast.pynode import parse
 from iast.visitor import *
 
 
@@ -41,10 +42,10 @@ class VisitorCase(unittest.TestCase):
             '''))
         tree = Foo.run(tree)
         exp_text = trim('''
-                Module(body = [Expr(value = Name(id = 'a',
+                Module(body = (Expr(value = Name(id = 'a',
                                                  ctx = Load())),
                                Expr(value = Name(id = 'a',
-                                                 ctx = Load()))])
+                                                 ctx = Load()))))
             ''')
         self.assertEqual(dump(tree), exp_text)
         

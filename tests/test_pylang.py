@@ -4,7 +4,7 @@
 import unittest
 
 from iast.util import trim
-from iast.node import (parse, Name, Load, Expr, Module,
+from iast.pynode import (parse, Name, Load, Expr, Module,
                        Tuple, Pass, Num, Str, Store, BinOp)
 from iast.pattern import PatVar, instantiate_wildcards
 from iast.pylang import *

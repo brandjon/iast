@@ -1,9 +1,12 @@
-"""Miscallenous utilities."""
+"""Miscellaneous utilities."""
 
 
 __all__ = [
     'trim',
 ]
+
+
+from textwrap import dedent
 
 
 def trim(text):
@@ -13,8 +16,6 @@ def trim(text):
     This is useful for writing code as triple-quoted multi-line
     strings.
     """
-    from textwrap import dedent
-    
     lines = text.split('\n')
     if len(lines) > 0:
         if len(lines[0]) == 0 or lines[0].isspace():

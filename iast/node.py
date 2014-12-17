@@ -1,23 +1,13 @@
-"""Defines Struct-based versions of the standard Python nodes."""
+"""Framework for Struct-based AST nodes."""
 
 
-import ast
 from collections import OrderedDict
 
 from simplestruct import Struct, Field, MetaStruct
 
-from .util import trim
-
 
 __all__ = [
     'AST',
-    
-    # Entries for AST nodes inserted programmatically.
-    
-    'convert_ast',
-    'pyToStruct',
-    'structToPy',
-    'parse',
     'dump',
 ]
 
@@ -30,10 +20,11 @@ class MetaAST(MetaStruct):
     """
     
     def __new__(mcls, clsname, bases, namespace, **kargs):
-        # Make sure the namespace is an ordered mapping.
+        # Make sure the namespace is an ordered mapping
+        # for passing the fields to MetaStruct.
         namespace = OrderedDict(namespace)
         
-        # Create if not present, ensure sequence is a tuple.
+        # Create _fields if not present, ensure sequence is a tuple.
         fields = tuple(namespace.get('_fields', ()))
         namespace['_fields'] = fields
         
@@ -47,98 +38,32 @@ class MetaAST(MetaStruct):
         
         return super().__new__(mcls, clsname, bases, namespace, **kargs)
 
-# Root of struct node class hierarchy.
 class AST(Struct, metaclass=MetaAST):
-    pass
+    """Root of any Struct AST node class hierarchy."""
 
 
-# Python node classes.
-py_nodes = {name: nodecls for name, nodecls in ast.__dict__.items()
-                          if isinstance(nodecls, type)
-                          if issubclass(nodecls, ast.AST)}
-
-# Struct node classes
-struct_nodes = {'AST': AST}
-
-# Define struct nodes programmatically.
-for name, pnode in py_nodes.items():
-    if name == 'AST':
-        continue
-    namespace = {'__module__': __name__,
-                 '_fields': tuple(pnode._fields)}
-    snode = type(pnode.__name__, (AST,), namespace)
-    globals()[pnode.__name__] = snode
-    struct_nodes[name] = snode
-    __all__.append(name)
-# Fix bases (must happen after since bases aren't necessarily
-# transferred before subclasses).
-for name, snode in struct_nodes.items():
-    if name == 'AST':
-        continue
-    (base,) = py_nodes[name].__bases__
-    base = struct_nodes[base.__name__]
-    snode.__bases__ = (base,)
-
-
-def convert_ast(tree, to_struct):
-    """Convert between Python AST nodes and struct nodes.
-    The direction is given by to_struct. tree may be a node,
-    list of nodes, or non-node tree.
-    """
-    base = ast.AST if to_struct else AST
-    mapping = struct_nodes if to_struct else py_nodes
-    seqtype = tuple if to_struct else list
+def dump(tree, indent=0):
+    """A multi-line Struct-AST pretty-printer. Note that this is for
+    getting the exact tree structure, not a source-like representation.
     
-    if isinstance(tree, base):
-        name = tree.__class__.__name__
-        out_type = mapping[name]
-        field_values = []
-        for field in tree._fields:
-            fval = getattr(tree, field, None)
-            fval = convert_ast(fval, to_struct)
-            field_values.append(fval)
-        new_tree = out_type(*field_values)
-        return new_tree
-    elif isinstance(tree, (list, tuple)):
-        return seqtype(convert_ast(item, to_struct) for item in tree)
-    else:
-        return tree
-
-def pyToStruct(tree):
-    """Turn a Python AST to a struct AST."""
-    assert isinstance(tree, ast.AST)
-    return convert_ast(tree, to_struct=True)
-
-def structToPy(tree):
-    """Turn a struct AST to a Python AST."""
-    assert isinstance(tree, AST)
-    return convert_ast(tree, to_struct=False)
-
-
-def parse(source):
-    """Like ast.parse(), but produce a struct AST. Works with indented
-    triple-quoted literals (via simplestruct.trim())."""
-    source = trim(source)
-    tree = ast.parse(source)
-    tree = pyToStruct(tree)
-    return tree
-
-
-def dump(tree, col=0):
-    """A multi-line struct-AST pretty-printer."""
+    If all non-node field values in the tree can be constructed from
+    their reprs, then the returned string can be executed to reproduce
+    the tree.
+    """
     if isinstance(tree, AST):
         functor = tree.__class__.__name__ + '('
-        newcol = col + len(functor)
-        delim = ',\n' + (' ' * newcol)
+        new_indent = indent + len(functor)
+        delim = ',\n' + (' ' * new_indent)
         return (functor +
-                delim.join(key + ' = ' + dump(item, len(key) + 3 + newcol)
+                delim.join(key + ' = ' + dump(item, len(key) + 3 + new_indent)
                            for key, item in tree._asdict().items()) +
                 ')')
     elif isinstance(tree, tuple):
-        newcol = col + 1
-        delim = ',\n' + (' ' * newcol)
-        return ('[' +
-                delim.join(dump(item, newcol) for item in tree) +
-                ']')
+        new_indent = indent + 1
+        delim = ',\n' + (' ' * new_indent)
+        end = ',)' if len(tree) == 1 else ')'
+        return ('(' +
+                delim.join(dump(item, new_indent) for item in tree) +
+                end)
     else:
         return repr(tree)

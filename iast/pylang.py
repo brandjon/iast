@@ -8,9 +8,10 @@ import itertools
 
 from simplestruct.type import checktype
 
-from iast.node import (AST, struct_nodes, stmt, expr, Store, With, withitem,
-                       Expr, Call, Name, Load, Attribute, Str, List, Tuple,
-                       Attribute, Subscript, Starred, Module, keyword, Num)
+from iast.node import AST
+from iast.pynode import (struct_nodes, stmt, expr, Store, With, withitem,
+                         Expr, Call, Name, Load, Attribute, Str, List, Tuple,
+                         Attribute, Subscript, Starred, Module, keyword, Num)
 from iast.visitor import NodeVisitor, NodeTransformer
 from iast.pattern import (PatVar, PatternTransformer,
                           instantiate_wildcards)
