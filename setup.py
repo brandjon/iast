@@ -1,14 +1,26 @@
 from setuptools import setup
 
-import iast
-
 setup(
-    name='iAST',
-    version=iast.__version__,
+    name =          'iAST',
+    version =       '0.2.0',
+    url =           'https://github.com/brandjon/iast',
     
-    author='Jon Brandvein',
-    license='MIT License',
-    description='A library for manipulating Python ASTs',
+    author =        'Jon Brandvein',
+    author_email =  'jon.brandvein@gmail.com',
+    license =       'MIT License',
+    description =   'A library for manipulating Python ASTs',
     
-    packages=['iast'],
+    classifiers = [
+        'Development Status :: 3 - Alpha',
+        'Intended Audience :: Developers',
+        'License :: OSI Approved :: MIT License',
+        'Programming Language :: Python :: 3',
+        'Topic :: Software Development :: Libraries :: Python Modules',
+    ],
+    
+    packages =      ['iast'],
+    
+    test_suite =    'tests',
+    
+    install_requires = ['simplestruct ==0.2.0']
 )
