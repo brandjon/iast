@@ -1,8 +1,15 @@
-"""Struct versions of Python's own AST nodes."""
+"""Struct versions of Python's own AST nodes.
+
+To avoid ambiguity, we refer to the normal (non-Struct) AST node
+classes that are defined in the "ast" standard library as "native
+Python nodes".
+"""
 
 
 __all__ = [
-    # Entries for AST nodes inserted programmatically.
+    # Entries for each AST node type get inserted
+    # into __all__ programmatically.
+    'nodes',
     'convert_ast',
     'pyToStruct',
     'structToPy',
@@ -16,41 +23,48 @@ from .util import trim
 from .node import AST
 
 
-# Python node classes.
-py_nodes = {name: nodecls for name, nodecls in ast.__dict__.items()
-                          if isinstance(nodecls, type)
-                          if issubclass(nodecls, ast.AST)}
+# Dictionary of all node classes in the ast library.
+native_nodes = {nodecls.__name__: nodecls
+                for nodecls in ast.__dict__.values()
+                if isinstance(nodecls, type)
+                if issubclass(nodecls, ast.AST)}
 
-# Struct node classes
-struct_nodes = {'AST': AST}
+# Dictionary of all Struct classes for Python node types.
+nodes = {'AST': AST}
 
-# Define struct nodes programmatically.
-for name, pnode in py_nodes.items():
-    if name == 'AST':
-        continue
-    namespace = {'__module__': __name__,
-                 '_fields': tuple(pnode._fields)}
-    snode = type(pnode.__name__, (AST,), namespace)
-    globals()[pnode.__name__] = snode
-    struct_nodes[name] = snode
-    __all__.append(name)
-# Fix bases (must happen after since bases aren't necessarily
-# transferred before subclasses).
-for name, snode in struct_nodes.items():
-    if name == 'AST':
-        continue
-    (base,) = py_nodes[name].__bases__
-    base = struct_nodes[base.__name__]
-    snode.__bases__ = (base,)
+def initialize_nodetypes():
+    """Populate the nodes dictionary."""
+    for name, py_node in native_nodes.items():
+        # Class hierarchy root is already defined in node.py.
+        if name == 'AST':
+            continue
+        # __module__ needs to be included in the namespace because
+        # classes created using type() do not get it set automatically.
+        namespace = {'__module__': __name__,
+                     '_fields': tuple(py_node._fields)}
+        new_node = type(name, (AST,), namespace)
+        globals()[py_node.__name__] = new_node
+        nodes[name] = new_node
+        __all__.append(name)
+    # Set up bases. Must happen after since Struct classes are created
+    # in arbitrary order.
+    for name, node in nodes.items():
+        if name == 'AST':
+            continue
+        # Each node has exactly one base class.
+        (base,) = native_nodes[name].__bases__
+        base = nodes[base.__name__]
+        node.__bases__ = (base,)
+
+initialize_nodetypes()
 
 
 def convert_ast(tree, to_struct):
-    """Convert between Python AST nodes and struct nodes.
-    The direction is given by to_struct. tree may be a node,
-    list of nodes, or non-node tree.
+    """Convert from native nodes to Struct nodes if to_struct is
+    True; otherwise convert in the opposite direction.
     """
     base = ast.AST if to_struct else AST
-    mapping = struct_nodes if to_struct else py_nodes
+    mapping = nodes if to_struct else native_nodes
     seqtype = tuple if to_struct else list
     
     if isinstance(tree, base):
@@ -69,19 +83,19 @@ def convert_ast(tree, to_struct):
         return tree
 
 def pyToStruct(tree):
-    """Turn a Python AST to a struct AST."""
+    """Convert from a native AST to a Struct AST."""
     assert isinstance(tree, ast.AST)
     return convert_ast(tree, to_struct=True)
 
 def structToPy(tree):
-    """Turn a struct AST to a Python AST."""
+    """Convert from a Struct AST to a native AST."""
     assert isinstance(tree, AST)
     return convert_ast(tree, to_struct=False)
 
 
 def parse(source):
     """Like ast.parse(), but produce a struct AST. Works with indented
-    triple-quoted literals (via simplestruct.trim())."""
+    triple-quoted literals (via util.trim())."""
     source = trim(source)
     tree = ast.parse(source)
     tree = pyToStruct(tree)

@@ -9,7 +9,7 @@ import itertools
 from simplestruct.type import checktype
 
 from iast.node import AST
-from iast.pynode import (struct_nodes, stmt, expr, Store, With, withitem,
+from iast.pynode import (nodes, stmt, expr, Store, With, withitem,
                          Expr, Call, Name, Load, Attribute, Str, List, Tuple,
                          Attribute, Subscript, Starred, Module, keyword, Num)
 from iast.visitor import NodeVisitor, NodeTransformer
@@ -440,7 +440,7 @@ class PyMacroProcessor(MacroProcessor):
     # Common helper for all nodes. Programmatically define handler
     # aliases for each node it is used with.
     def helper(self, name, *args, **kargs):
-        nodecls = struct_nodes[name]
+        nodecls = nodes[name]
         if self.patterns:
             sig = nodecls._signature
             ba = sig.bind_partial(*args, **kargs)
@@ -462,7 +462,7 @@ class PyMacroProcessor(MacroProcessor):
             tree = instantiate_wildcards(tree)
         return tree
 
-for name, snode in struct_nodes.items():
+for name, snode in nodes.items():
     (base,) = snode.__bases__
     setattr(PyMacroProcessor, 'handle_fe_' + name,
             PyMacroProcessor.helper)
