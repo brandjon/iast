@@ -1,16 +1,15 @@
 """Framework for Struct-based AST nodes."""
 
 
-from collections import OrderedDict
-
-from simplestruct import Struct, Field, MetaStruct
-
-
 __all__ = [
     'AST',
     'dump',
     'nodes_from_asdl',
 ]
+
+
+from collections import OrderedDict
+from simplestruct import Struct, Field, MetaStruct
 
 
 class MetaAST(MetaStruct):

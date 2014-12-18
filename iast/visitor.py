@@ -1,14 +1,14 @@
 """Visitors for struct ASTs."""
 
 
-from iast.node import AST
-
-
 __all__ = [
     'NodeVisitor',
     'NodeTransformer',
     'ChangeCounter',
 ]
+
+
+from .node import AST
 
 
 class NodeVisitor:

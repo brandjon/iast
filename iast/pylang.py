@@ -1,22 +1,6 @@
 """Templating system for substituting ASTs and creating AST macros."""
 
 
-from inspect import signature, Parameter
-from functools import partial, wraps, reduce
-import operator
-import itertools
-
-from simplestruct.type import checktype
-
-from iast.node import AST
-from iast.pynode import (nodes, stmt, expr, Store, With, withitem,
-                         Expr, Call, Name, Load, Attribute, Str, List, Tuple,
-                         Attribute, Subscript, Starred, Module, keyword, Num)
-from iast.visitor import NodeVisitor, NodeTransformer
-from iast.pattern import (PatVar, PatternTransformer,
-                          instantiate_wildcards)
-
-
 __all__ = [
     'ContextSetter',
     'extract_mod',
@@ -26,6 +10,22 @@ __all__ = [
     'PyMacroProcessor',
     'astargs',
 ]
+
+
+from inspect import signature, Parameter
+from functools import partial, wraps, reduce
+import operator
+import itertools
+
+from simplestruct.type import checktype
+
+from .node import AST
+from .pynode import (nodes, stmt, expr, Store, With, withitem,
+                     Expr, Call, Name, Load, Attribute, Str, List, Tuple,
+                     Attribute, Subscript, Starred, Module, keyword, Num)
+from .visitor import NodeVisitor, NodeTransformer
+from .pattern import (PatVar, PatternTransformer,
+                      instantiate_wildcards)
 
 
 # Taken from the documentation for the itertools module.

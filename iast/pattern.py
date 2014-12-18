@@ -5,12 +5,6 @@
 # match a statement.
 
 
-import itertools
-
-from iast.node import AST
-from iast.visitor import NodeVisitor, NodeTransformer
-
-
 __all__ = [
     'MatchFailure',
     'PatVar',
@@ -21,6 +15,12 @@ __all__ = [
     'sub',
     'PatternTransformer',
 ]
+
+
+import itertools
+
+from .node import AST
+from .visitor import NodeVisitor, NodeTransformer
 
 
 class MatchFailure(Exception):
