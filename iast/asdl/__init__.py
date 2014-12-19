@@ -15,6 +15,7 @@ See also:
 
 
 __all__ = [
+    'primitive_types',
     'python33_asdl',
     'python34_asdl',
     # ...
@@ -26,6 +27,15 @@ from os.path import join, dirname
 from .asdl import *
 from .asdl import __all__ as _asdl_all, parse as _asdl_parse
 __all__.extend(_asdl_all)
+
+primitive_types = {
+    'identifier': str,
+    'int': int,
+    'string': str,
+    'bytes': bytes,
+    'object': object,
+    'singleton': object,
+}
 
 # Redefine parse() to accept a string rather than an open file.
 

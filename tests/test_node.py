@@ -3,7 +3,7 @@
 
 import unittest
 from collections import OrderedDict
-from simplestruct import Field
+from simplestruct import Field, TypedField
 
 from iast.util import trim
 from iast.asdl import parse as asdl_parse
@@ -69,7 +69,7 @@ class NodeCase(unittest.TestCase):
         ])
         self.assertEqual(info.items(), exp_info.items())
     
-    def test_from_asdl(self):
+    def test_from_asdl_untyped(self):
         asdl = asdl_parse(self.asdl_spec)
         lang = nodes_from_asdl(asdl)
         
@@ -78,6 +78,23 @@ class NodeCase(unittest.TestCase):
         self.assertEqual(lang['Sum'].__bases__, (lang['expr'],))
         self.assertEqual(lang['num']._fields, ('real', 'imag'))
         self.assertEqual(lang['num'].__bases__, (lang['AST'],))
+    
+    def test_from_asdl_typed(self):
+        asdl = asdl_parse(self.asdl_spec)
+        lang = nodes_from_asdl(asdl, typed=True,
+                               primitive_types={'int': int})
+        
+        Numcls = lang['Num']
+        numcls = lang['num']
+        
+        numcls(1, 2)
+        numcls(1)
+        with self.assertRaises(TypeError):
+            numcls('a')
+        
+        Numcls(numcls(1, 2))
+        with self.assertRaises(TypeError):
+            Numcls((1, 2))
 
 
 if __name__ == '__main__':

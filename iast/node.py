@@ -133,7 +133,8 @@ class ASDLImporter:
             fields.append(self.visit(f, name))
         self.left_info[name] = (fields, 'AST')
 
-def nodes_from_asdl(asdl_tree, module=None, typed=True):
+def nodes_from_asdl(asdl_tree, module=None, typed=False,
+                    primitive_types=None):
     """Given an ASDL structure, return a mapping from node type
     names to node types.
     
@@ -142,18 +143,19 @@ def nodes_from_asdl(asdl_tree, module=None, typed=True):
     (This allows instances of the node classes to be pickled.)
     
     If typed is True, the node classes' fields will be type-checked.
+    In this case, primitive_types must be a mapping from names of
+    primitives appearing in the ASDL to their corresponding types.
     """
     lang = {'AST': AST}
     info = ASDLImporter().run(asdl_tree)
-    for name, (fields, _base) in info.items():
+    for name, (fields, base) in info.items():
         namespace = {'__module__': module,
                      '_fields': tuple(fn for fn, ft, fq in fields)}
-        new_node = type(name, (AST,), namespace)
+        if typed:
+            for fn, ft, fq in fields:
+                typ = lang[ft] if ft in lang else primitive_types[ft]
+                namespace[fn] = TypedField(
+                        typ, seq=(fq == '*'), opt=(fq == '?'))
+        new_node = type(name, (lang[base],), namespace)
         lang[name] = new_node
-    for name, node in lang.items():
-        if name == 'AST':
-            continue
-        _fields, base = info[name]
-        basecls = lang[base]
-        node.__bases__ = (basecls,)
     return lang
