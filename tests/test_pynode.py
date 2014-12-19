@@ -14,7 +14,7 @@ class NodeCase(unittest.TestCase):
     
     def test_init_nodetypes(self):
         node = Name('a', Load())
-        self.assertEqual(str(node), 'Name(id=a, ctx=Load())')
+        self.assertEqual(repr(node), "Name(id='a', ctx=Load())")
         self.assertEqual(Name.__bases__, (expr,))
     
     def test_import(self):

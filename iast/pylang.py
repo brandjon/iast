@@ -16,7 +16,6 @@ from inspect import signature, Parameter
 from functools import partial, wraps, reduce
 import operator
 import itertools
-
 from simplestruct.type import checktype
 
 from .node import AST

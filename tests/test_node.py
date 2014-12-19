@@ -2,12 +2,13 @@
 
 
 import unittest
-
+from collections import OrderedDict
 from simplestruct import Field
 
 from iast.util import trim
 from iast.asdl import parse as asdl_parse
 from iast.node import *
+from iast.node import ASDLImporter
 
 
 class NodeCase(unittest.TestCase):
@@ -47,29 +48,35 @@ class NodeCase(unittest.TestCase):
         tree2 = eval(s, locals())
         self.assertEqual(tree2, tree)
     
+    asdl_spec = trim('''
+        module Dummy
+        {
+            expr = Sum(expr* operands)
+                 | Num(num val)
+            num = (int real, int? imag)
+        }
+        ''')
+    
+    def test_asdl_importer(self):
+        asdl = asdl_parse(self.asdl_spec)
+        info = ASDLImporter().run(asdl)
+        
+        exp_info = OrderedDict([
+            ('expr', ([], 'AST')),
+            ('num', ([('real', 'int', ''), ('imag', 'int', '?')], 'AST')),
+            ('Sum', ([('operands', 'expr', '*')], 'expr')),
+            ('Num', ([('val', 'num', '')], 'expr'))
+        ])
+        self.assertEqual(info.items(), exp_info.items())
+    
     def test_from_asdl(self):
-        spec = trim('''
-            module Dummy
-            {
-                expr = Add(expr left, expr right)
-                     | Sum(expr* operands)
-                     | Num(num val)
-                num = (int abs, object sign)
-            }
-            ''')
-        asdl = asdl_parse(spec)
+        asdl = asdl_parse(self.asdl_spec)
         lang = nodes_from_asdl(asdl)
         
         self.assertEqual(lang['AST'], AST)
-        self.assertEqual(lang['expr']._fields, ())
-        self.assertEqual(lang['expr'].__bases__, (lang['AST'],))
-        self.assertEqual(lang['Add']._fields, ('left', 'right'))
-        self.assertEqual(lang['Add'].__bases__, (lang['expr'],))
         self.assertEqual(lang['Sum']._fields, ('operands',))
         self.assertEqual(lang['Sum'].__bases__, (lang['expr'],))
-        self.assertEqual(lang['Num']._fields, ('val',))
-        self.assertEqual(lang['Num'].__bases__, (lang['expr'],))
-        self.assertEqual(lang['num']._fields, ('abs', 'sign'))
+        self.assertEqual(lang['num']._fields, ('real', 'imag'))
         self.assertEqual(lang['num'].__bases__, (lang['AST'],))
 
 
