@@ -133,7 +133,7 @@ class ASDLImporter:
             fields.append(self.visit(f, name))
         self.left_info[name] = (fields, 'AST')
 
-def nodes_from_asdl(asdl_tree, module=None, typed=False,
+def nodes_from_asdl(asdl_tree, *, module=None, typed=False,
                     primitive_types=None):
     """Given an ASDL structure, return a mapping from node type
     names to node types.
@@ -146,16 +146,27 @@ def nodes_from_asdl(asdl_tree, module=None, typed=False,
     In this case, primitive_types must be a mapping from names of
     primitives appearing in the ASDL to their corresponding types.
     """
+    # When not using types, we leave it to MetaAST to generate
+    # the field descriptors from the _fields attribute.
+    # When using types, we explicitly set each field to a
+    # TypedField. But since the ASDL productions may be circular,
+    # the actual type is patched in after creating all nodes.
+    
     lang = {'AST': AST}
     info = ASDLImporter().run(asdl_tree)
     for name, (fields, base) in info.items():
         namespace = {'__module__': module,
                      '_fields': tuple(fn for fn, ft, fq in fields)}
         if typed:
-            for fn, ft, fq in fields:
-                typ = lang[ft] if ft in lang else primitive_types[ft]
+            for fn, _ft, fq in fields:
                 namespace[fn] = TypedField(
-                        typ, seq=(fq == '*'), opt=(fq == '?'))
+                        object, seq=(fq == '*'), opt=(fq == '?'))
         new_node = type(name, (lang[base],), namespace)
         lang[name] = new_node
+    if typed:
+        for name, (fields, _base) in info.items():
+            for fn, ft, _fq in fields:
+                typ = lang[ft] if ft in lang else primitive_types[ft]
+                desc = getattr(lang[name], fn)
+                desc.kind = typ
     return lang
