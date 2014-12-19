@@ -155,18 +155,19 @@ def nodes_from_asdl(asdl_tree, *, module=None, typed=False,
     lang = {'AST': AST}
     info = ASDLImporter().run(asdl_tree)
     for name, (fields, base) in info.items():
+        fieldnames = tuple(fn for fn, _ft, _fq in fields)
         namespace = {'__module__': module,
-                     '_fields': tuple(fn for fn, ft, fq in fields)}
+                     '_fields': fieldnames}
         if typed:
             for fn, _ft, fq in fields:
-                namespace[fn] = TypedField(
-                        object, seq=(fq == '*'), opt=(fq == '?'))
+                namespace[fn] = TypedField(object, seq=(fq == '*'))
         new_node = type(name, (lang[base],), namespace)
         lang[name] = new_node
     if typed:
         for name, (fields, _base) in info.items():
-            for fn, ft, _fq in fields:
+            for fn, ft, fq in fields:
                 typ = lang[ft] if ft in lang else primitive_types[ft]
+                kind = (typ, type(None)) if fq == '?' else typ
                 desc = getattr(lang[name], fn)
-                desc.kind = typ
+                desc.kind = kind
     return lang

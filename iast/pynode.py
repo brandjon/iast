@@ -20,7 +20,8 @@ __all__ = [
 import ast
 
 from .util import trim
-from .node import AST
+from .asdl import python34_asdl, primitive_types
+from .node import AST, nodes_from_asdl
 
 
 # Dictionary of all node classes in the ast library.
@@ -30,31 +31,16 @@ native_nodes = {nodecls.__name__: nodecls
                 if issubclass(nodecls, ast.AST)}
 
 # Dictionary of all Struct classes for Python node types.
-nodes = {'AST': AST}
+nodes = {}
 
 def initialize_nodetypes():
     """Populate the nodes dictionary."""
-    for name, py_node in native_nodes.items():
-        # Class hierarchy root is already defined in node.py.
-        if name == 'AST':
-            continue
-        # __module__ needs to be included in the namespace because
-        # classes created using type() do not get it set automatically.
-        namespace = {'__module__': __name__,
-                     '_fields': tuple(py_node._fields)}
-        new_node = type(name, (AST,), namespace)
-        globals()[py_node.__name__] = new_node
-        nodes[name] = new_node
-        __all__.append(name)
-    # Set up bases. Must happen after since Struct classes are created
-    # in arbitrary order.
-    for name, node in nodes.items():
-        if name == 'AST':
-            continue
-        # Each node has exactly one base class.
-        (base,) = native_nodes[name].__bases__
-        base = nodes[base.__name__]
-        node.__bases__ = (base,)
+    assert len(nodes) == 0
+    nodes.update(nodes_from_asdl(
+                    python34_asdl, module=__name__,
+                    typed=True, primitive_types=primitive_types))
+    __all__.extend(nodes.keys())
+    globals().update(nodes)
 
 initialize_nodetypes()
 

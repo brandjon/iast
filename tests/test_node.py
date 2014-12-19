@@ -88,9 +88,11 @@ class NodeCase(unittest.TestCase):
         numcls = lang['num']
         
         numcls(1, 2)
-        numcls(1)
+        numcls(1, None)
         with self.assertRaises(TypeError):
-            numcls('a')
+            numcls('a', 2)
+        with self.assertRaises(TypeError):
+            numcls(1, 'b')
         
         Numcls(numcls(1, 2))
         with self.assertRaises(TypeError):
