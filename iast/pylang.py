@@ -384,11 +384,12 @@ class MacroProcessor(PatternTransformer):
             _args = (_recv,) + _args
         _args = (_func,) + _args
         
+        kwargs = {kw.arg: kw.value for kw in _keywords}
         if _body is not None:
-            _keywords += (keyword('_body', _body),)
+            kwargs['_body'] = _body
         
         sig = signature(handler)
-        ba = sig.bind(*_args, **{kw.arg: kw.value for kw in _keywords})
+        ba = sig.bind(*_args, **kwargs)
         return handler(*ba.args, **ba.kwargs)
     
     def __init__(self):

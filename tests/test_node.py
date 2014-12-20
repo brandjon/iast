@@ -3,7 +3,7 @@
 
 import unittest
 from collections import OrderedDict
-from simplestruct import Field, TypedField
+from simplestruct import Field
 
 from iast.util import trim
 from iast.asdl import parse as asdl_parse

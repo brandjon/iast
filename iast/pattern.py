@@ -29,6 +29,7 @@ class MatchFailure(Exception):
 
 class pattern(AST):    
     """Meta node for AST patterns."""
+    _meta = True
 
 class PatVar(pattern):
     

@@ -39,7 +39,52 @@ class MetaAST(MetaStruct):
         return super().__new__(mcls, clsname, bases, namespace, **kargs)
 
 class AST(Struct, metaclass=MetaAST):
+    
     """Root of any Struct AST node class hierarchy."""
+    
+    _meta = False
+    """If True, this node is metasyntactic (e.g. for pattern matching)
+    and is therefore not restricted by type constraints.
+    """
+
+class TypedASTField(TypedField):
+    
+    """Type-checked field for AST nodes. quant is one of the ASDL
+    quantifiers:
+    
+        '':     no type modification
+        '*':    same as passing seq=True to TypedField
+        '?':    same as adding NoneType to kind
+    
+    If the field value is an AST node with _meta set to True,
+    waive type checking.
+    """
+    
+    def __init__(self, kind, quant):
+        assert quant in ['', '*', '?']
+        seq = quant == '*'
+        super().__init__(kind, seq=seq)
+        self.quant = quant
+    
+    def copy(self):
+        return type(self)(self.kind, self.quant)
+    
+    def checktype(self, value, kind, **kargs):
+        if isinstance(value, AST) and value._meta:
+            return
+        super().checktype(value, kind, **kargs)
+    
+    def checktype_seq(self, value, kind, **kargs):
+        if isinstance(value, AST) and value._meta:
+            return
+        super().checktype_seq(value, kind, **kargs)
+    
+    def normalize(self, inst, value):
+        # Without this check, we'd end up replacing a metasyntactic
+        # node with the sequence of its fields.
+        if isinstance(value, AST) and value._meta:
+            return value
+        return super().normalize(inst, value)
 
 
 def dump(tree, indent=0):
@@ -160,7 +205,7 @@ def nodes_from_asdl(asdl_tree, *, module=None, typed=False,
                      '_fields': fieldnames}
         if typed:
             for fn, _ft, fq in fields:
-                namespace[fn] = TypedField(object, seq=(fq == '*'))
+                namespace[fn] = TypedASTField(None, fq)
         new_node = type(name, (lang[base],), namespace)
         lang[name] = new_node
     if typed:
