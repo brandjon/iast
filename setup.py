@@ -22,5 +22,5 @@ setup(
     
     test_suite =    'tests',
     
-    install_requires = ['simplestruct ==0.2.0']
+    install_requires = ['simplestruct >=0.2.1'],
 )
