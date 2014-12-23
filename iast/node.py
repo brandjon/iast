@@ -54,7 +54,7 @@ class TypedASTField(TypedField):
     
         '':     no type modification
         '*':    same as passing seq=True to TypedField
-        '?':    same as adding NoneType to kind
+        '?':    same as passing or_none=True to TypedField
     
     If the field value is an AST node with _meta set to True,
     waive type checking.
@@ -63,7 +63,8 @@ class TypedASTField(TypedField):
     def __init__(self, kind, quant):
         assert quant in ['', '*', '?']
         seq = quant == '*'
-        super().__init__(kind, seq=seq)
+        or_none = quant == '?'
+        super().__init__(kind, seq=seq, or_none=or_none)
         self.quant = quant
     
     def copy(self):
@@ -212,7 +213,6 @@ def nodes_from_asdl(asdl_tree, *, module=None, typed=False,
         for name, (fields, _base) in info.items():
             for fn, ft, fq in fields:
                 typ = lang[ft] if ft in lang else primitive_types[ft]
-                kind = (typ, type(None)) if fq == '?' else typ
                 desc = getattr(lang[name], fn)
-                desc.kind = kind
+                desc.kind = typ
     return lang
