@@ -1,4 +1,6 @@
-"""Visitors for struct ASTs."""
+"""Visitors for Struct ASTs. Analogous to the visitors in the
+standard library 'ast' module, with some enhancements.
+"""
 
 
 __all__ = [
@@ -13,13 +15,37 @@ from .node import AST
 
 class NodeVisitor:
     
-    """Similar to ast.NodeVisitor. This version tracks a stack of the
-    currently visited nodes. It includes a classmethod for combining
-    visitor instantiation with invocation. It can be called on either
-    nodes or sequences of nodes.
+    """Walk a tree, dispatching to different handlers by node type.
+    To use, create a subclass and define or override the visit
+    methods.
     
-    Note that since struct nodes are immutable, NodeTransformer must be
-    used if the tree is to be modified.
+    When visit() is called on a node or a tuple, it recursively
+    processes the subtree using node_visit(), and various handlers.
+    The handler for a given node type is determined by prefixing
+    the name of that type with 'visit_', e.g. 'visit_Foo' for node
+    type 'Foo'. If the handler is not found, generic_visit() is used
+    as the default.
+    
+    The handler is responsible for recursing over the subtree.
+    It controls whether the tree traversal is preorder or postorder,
+    or it may prune the traversal by not recursing at all. It should
+    process each child by calling self.visit(child). Alternatively,
+    it can call self.generic_visit(node) to get them all. Do not call
+    self.visit(node), as that would create a call cycle.
+    
+    If the handlers give a return value, you may want to override
+    generic_visit() and seq_visit() to propagate it as well.
+    
+    The stack of currently visited nodes is made available in the
+    _visit_stack attribute.
+    
+    To invoke the visitor, call the process() method with the tree.
+    Subclasses can override process to do initial setup/teardown
+    actions or tweak the returned value. The run() classmethod is
+    provided as a shorthand to combine instantiation and processing.
+    
+    Note that since Struct nodes are immutable, NodeTransformer must
+    be used if you want a tree transformation.
     """
     
     @classmethod
@@ -51,8 +77,8 @@ class NodeVisitor:
             return tree
     
     def node_visit(self, node):
-        """Dispatch to a particular node kind's visit method,
-        or to generic_visit().
+        """Dispatch to a particular node handler if it exists,
+        or else to generic_visit().
         """
         self._visit_stack.append(node)
         
@@ -62,9 +88,6 @@ class NodeVisitor:
         
         self._visit_stack.pop()
         return result
-    
-    # Unlike ast.NodeVisitor, our list dispatching is factored out
-    # into a separate method, instead of put in generic_visit().
     
     def seq_visit(self, seq):
         """Dispatch to each item of a sequence."""
@@ -81,20 +104,24 @@ class NodeVisitor:
 class NodeTransformer(NodeVisitor):
     
     """Visitor that produces a transformed copy of the input tree.
+    
     Visit methods may return a replacement node, or None to indicate
     no change (note that this differs from ast.NodeTransformer).
-    If the node is part of a sequence, it may also return a sequence
-    to splice in its place -- use the empty sequence to delete the
-    node.
+    If the node is part of a sequence, it may also return a list or
+    tuple (normalized to a tuple) to splice in its place; use the
+    empty sequence to delete the node from its sequence.
     """
     
-    # In the visitors, "no change" is indicated by returning None
+    # In the handlers, "no change" is indicated by returning None
     # or by returning the exact same node as was given. Returning
     # a node that is equal to ("==") but not identical to ("is")
     # the given node is considered a change. This is for efficiency.
     #
     # So long as all children return no change, seq_visit() and
-    # generic_visit() return no change.
+    # generic_visit() return no change. This means that the only
+    # nodes that need to be copied are the ones that lie along
+    # a path from the changed node to the root of the tree, rather
+    # than all the nodes in the tree.
     
     def process(self, tree):
         # Intercept None returns, interpret them as leaving the

@@ -32,6 +32,7 @@ class VisitorCase(unittest.TestCase):
                 if node.id == 'a':
                     return node._replace(id='c')
             def visit_Expr(self, node):
+                node = self.generic_visit(node)
                 return [node, node]
             def visit_Pass(self, node):
                 return []
@@ -42,9 +43,9 @@ class VisitorCase(unittest.TestCase):
             '''))
         tree = Foo.run(tree)
         exp_text = trim('''
-                Module(body = (Expr(value = Name(id = 'a',
+                Module(body = (Expr(value = Name(id = 'c',
                                                  ctx = Load())),
-                               Expr(value = Name(id = 'a',
+                               Expr(value = Name(id = 'c',
                                                  ctx = Load()))))
             ''')
         self.assertEqual(dump(tree), exp_text)
