@@ -33,16 +33,33 @@ class NodeVisitor:
     it can call self.generic_visit(node) to get them all. Do not call
     self.visit(node), as that would create a call cycle.
     
-    If the handlers give a return value, you may want to override
-    generic_visit() and seq_visit() to propagate it as well.
-    
-    The stack of currently visited nodes is made available in the
-    _visit_stack attribute.
-    
     To invoke the visitor, call the process() method with the tree.
     Subclasses can override process to do initial setup/teardown
     actions or tweak the returned value. The run() classmethod is
     provided as a shorthand to combine instantiation and processing.
+    
+    The stack of currently visited nodes is made available in the
+    _visit_stack attribute. Its format is a list of tuples (most
+    recent last) of form (node, field, index):
+    
+        - node is the AST object being visited for that entry
+        
+        - field is the name of the parent's field that contains
+          this node as a child, or None if there is no parent
+        
+        - index is the location of this node in the currently
+          visited sequence, or None if we are not in a sequence.
+    
+    You may have the handlers return a value. In this case, you
+    should override generic_visit() and seq_visit() to propagate
+    these returned values.
+    
+    Visitors and handlers may pass *args and **kargs, which get
+    propagated by the default visitor methods unchanged. However,
+    the special keyword arguments '_field' and '_index' are
+    intercepted by node_visit() and used to help manage _visit_stack.
+    Any override of seq_visit() or generic_visit() should pass these
+    keyword arguments to visit().
     
     Note that since Struct nodes are immutable, NodeTransformer must
     be used if you want a tree transformation.
@@ -65,40 +82,42 @@ class NodeVisitor:
         assert len(self._visit_stack) == 0, 'Visit stack unbalanced'
         return result
     
-    def visit(self, tree):
+    def visit(self, tree, *args, **kargs):
         """Dispatch on a node or sequence (tuple). Other kinds
         of values are returned without processing.
         """
         if isinstance(tree, AST):
-            return self.node_visit(tree)
+            return self.node_visit(tree, *args, **kargs)
         elif isinstance(tree, tuple):
-            return self.seq_visit(tree)
+            return self.seq_visit(tree, *args, **kargs)
         else:
             return tree
     
-    def node_visit(self, node):
+    def node_visit(self, node, *args, _field=None, _index=None, **kargs):
         """Dispatch to a particular node handler if it exists,
         or else to generic_visit().
         """
-        self._visit_stack.append(node)
+        entry = (node, _field, _index)
+        self._visit_stack.append(entry)
         
         method = 'visit_' + node.__class__.__name__
         visitor = getattr(self, method, self.generic_visit)
-        result = visitor(node)
+        result = visitor(node, *args, **kargs)
         
         self._visit_stack.pop()
         return result
     
-    def seq_visit(self, seq):
+    def seq_visit(self, seq, *args, **kargs):
         """Dispatch to each item of a sequence."""
-        for item in seq:
-            self.visit(item)
+        for i, item in enumerate(seq):
+            self.visit(item, _index=i, *args, **kargs)
+        self._visit_index = None
     
-    def generic_visit(self, node):
+    def generic_visit(self, node, *args, **kargs):
         """Dispatch to each field of a node."""
         for field in node._fields:
             value = getattr(node, field)
-            self.visit(value)
+            self.visit(value, _field=field, *args, **kargs)
 
 
 class NodeTransformer(NodeVisitor):

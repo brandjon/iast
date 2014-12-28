@@ -5,6 +5,7 @@ import unittest
 
 from iast.util import trim
 from iast.node import dump
+import iast.pynode as L
 from iast.pynode import parse
 from iast.visitor import *
 
@@ -23,6 +24,29 @@ class VisitorCase(unittest.TestCase):
         tree = parse('a = foo(a)')
         result = Foo.run(tree)
         self.assertEqual(result, {'a', 'foo'})
+    
+    def test_visitor_context(self):
+        class Foo(NodeVisitor):
+            def process(self, tree):
+                self.occ = []
+                super().process(tree)
+                return self.occ
+            def visit_Pass(self, node):
+                self.occ.append(self._visit_stack[-1])
+            def visit_Name(self, node):
+                self.occ.append(self._visit_stack[-1])
+        
+        tree = parse('''
+            pass
+            a = b
+            ''')
+        res = Foo.run(tree)
+        exp_res = [
+            (L.Pass(), 'body', 0),
+            (L.Name('a', L.Store()), 'targets', 0),
+            (L.Name('b', L.Load()), 'value', None)
+        ]
+        self.assertEqual(res, exp_res)
     
     def test_transformer(self):
         # Basic functionality.
