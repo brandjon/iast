@@ -5,7 +5,9 @@ standard library 'ast' module, with some enhancements.
 
 __all__ = [
     'NodeVisitor',
+    'AdvNodeVisitor',
     'NodeTransformer',
+    'AdvNodeTransformer',
     'ChangeCounter',
 ]
 
@@ -38,28 +40,9 @@ class NodeVisitor:
     actions or tweak the returned value. The run() classmethod is
     provided as a shorthand to combine instantiation and processing.
     
-    The stack of currently visited nodes is made available in the
-    _visit_stack attribute. Its format is a list of tuples (most
-    recent last) of form (node, field, index):
-    
-        - node is the AST object being visited for that entry
-        
-        - field is the name of the parent's field that contains
-          this node as a child, or None if there is no parent
-        
-        - index is the location of this node in the currently
-          visited sequence, or None if we are not in a sequence.
-    
     You may have the handlers return a value. In this case, you
     should override generic_visit() and seq_visit() to propagate
     these returned values.
-    
-    Visitors and handlers may pass *args and **kargs, which get
-    propagated by the default visitor methods unchanged. However,
-    the special keyword arguments '_field' and '_index' are
-    intercepted by node_visit() and used to help manage _visit_stack.
-    Any override of seq_visit() or generic_visit() should pass these
-    keyword arguments to visit().
     
     Note that since Struct nodes are immutable, NodeTransformer must
     be used if you want a tree transformation.
@@ -77,8 +60,70 @@ class NodeVisitor:
     
     def process(self, tree):
         """Entry point for invoking the visitor."""
-        self._visit_stack = []
         result = self.visit(tree)
+        return result
+    
+    def visit(self, tree):
+        """Dispatch on a node or sequence (tuple). Other kinds
+        of values are returned without processing.
+        """
+        if isinstance(tree, AST):
+            return self.node_visit(tree)
+        elif isinstance(tree, tuple):
+            return self.seq_visit(tree)
+        else:
+            return tree
+    
+    def node_visit(self, node):
+        """Dispatch to a particular node handler if it exists,
+        or else to generic_visit().
+        """
+        method = 'visit_' + node.__class__.__name__
+        visitor = getattr(self, method, self.generic_visit)
+        result = visitor(node)
+        return result
+    
+    def seq_visit(self, seq):
+        """Dispatch to each item of a sequence."""
+        for item in seq:
+            self.visit(item)
+    
+    def generic_visit(self, node):
+        """Dispatch to each field of a node."""
+        for field in node._fields:
+            value = getattr(node, field)
+            self.visit(value)
+
+
+class AdvNodeVisitor(NodeVisitor):
+    
+    """As above, but tracks context (parent) information and allows
+    for passing arbitrary arguments to visit handlers.
+    
+    The stack of currently visited nodes is made available in the
+    _visit_stack attribute. Its format is a list of tuples (most
+    recent last) of form (node, field, index):
+    
+        - node is the AST object being visited for that entry
+        
+        - field is the name of the parent's field that contains
+          this node as a child, or None if there is no parent
+        
+        - index is the location of this node in the currently
+          visited sequence, or None if we are not in a sequence.
+    
+    Visitors and handlers may pass *args and **kargs, which get
+    propagated by the default visitor methods unchanged. However,
+    the special keyword arguments '_field' and '_index' are
+    intercepted by node_visit() and used to help manage _visit_stack.
+    Any override of seq_visit() or generic_visit() should pass these
+    keyword arguments to visit().
+    """
+    
+    def process(self, tree):
+        """Entry point for invoking the visitor."""
+        self._visit_stack = []
+        result = super().process(tree)
         assert len(self._visit_stack) == 0, 'Visit stack unbalanced'
         return result
     
@@ -111,7 +156,6 @@ class NodeVisitor:
         """Dispatch to each item of a sequence."""
         for i, item in enumerate(seq):
             self.visit(item, _index=i, *args, **kargs)
-        self._visit_index = None
     
     def generic_visit(self, node, *args, **kargs):
         """Dispatch to each field of a node."""
@@ -145,6 +189,55 @@ class NodeTransformer(NodeVisitor):
     # seq_visit() and generic_visit() indicate no change by
     # returning the node rather than None. This is more programmer-
     # friendly for handlers.
+    
+    def process(self, tree):
+        # Intercept None returns, interpret them as leaving the
+        # tree unchanged.
+        result = super().process(tree)
+        if result is None:
+            result = tree
+        return result
+    
+    def seq_visit(self, seq):
+        changed = False
+        new_seq = []
+        
+        for item in seq:
+            result = self.visit(item)
+            if result is None:
+                result = item
+            if result is not item:
+                changed = True
+            if isinstance(result, (tuple, list)):
+                new_seq.extend(result)
+            else:
+                new_seq.append(result)
+        
+        if changed:
+            return tuple(new_seq)
+        else:
+            # Be sure to return the original tuple so the
+            # identity test in generic_visit() succeeds
+            # and we potentially avoid a copy.
+            return seq
+    
+    def generic_visit(self, node):
+        repls = {}
+        for field in node._fields:
+            value = getattr(node, field)
+            result = self.visit(value)
+            if not (result is None or result is value):
+                repls[field] = result
+        
+        if len(repls) == 0:
+            return node
+        else:
+            return node._replace(**repls)
+
+
+class AdvNodeTransformer(AdvNodeVisitor):
+    
+    """As above but with context info and arbitrary parameters."""
     
     def process(self, tree):
         # Intercept None returns, interpret them as leaving the
@@ -204,10 +297,10 @@ class ChangeCounter(NodeTransformer):
         instr.setdefault('changed', 0)
         self.instr = instr
     
-    def visit(self, tree, *args, **kargs):
+    def visit(self, tree):
         self.instr['visited'] += 1
         before = tree
-        tree = super().visit(tree, *args, **kargs)
+        tree = super().visit(tree)
         if tree is not None and tree is not before:
             self.instr['changed'] += 1
         return tree

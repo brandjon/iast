@@ -26,7 +26,7 @@ class VisitorCase(unittest.TestCase):
         self.assertEqual(result, {'a', 'foo'})
     
     def test_visitor_context(self):
-        class Foo(NodeVisitor):
+        class Foo(AdvNodeVisitor):
             def process(self, tree):
                 self.occ = []
                 super().process(tree)
