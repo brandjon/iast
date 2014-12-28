@@ -154,12 +154,12 @@ class NodeTransformer(NodeVisitor):
             result = tree
         return result
     
-    def seq_visit(self, seq):
+    def seq_visit(self, seq, *args, **kargs):
         changed = False
         new_seq = []
         
-        for item in seq:
-            result = self.visit(item)
+        for i, item in enumerate(seq):
+            result = self.visit(item, _index=i, *args, **kargs)
             if result is None:
                 result = item
             if result is not item:
@@ -177,11 +177,11 @@ class NodeTransformer(NodeVisitor):
             # and we potentially avoid a copy.
             return seq
     
-    def generic_visit(self, node):
+    def generic_visit(self, node, *args, **kargs):
         repls = {}
         for field in node._fields:
             value = getattr(node, field)
-            result = self.visit(value)
+            result = self.visit(value, _field=field, *args, **kargs)
             if not (result is None or result is value):
                 repls[field] = result
         
@@ -204,10 +204,10 @@ class ChangeCounter(NodeTransformer):
         instr.setdefault('changed', 0)
         self.instr = instr
     
-    def visit(self, tree):
+    def visit(self, tree, *args, **kargs):
         self.instr['visited'] += 1
         before = tree
-        tree = super().visit(tree)
+        tree = super().visit(tree, *args, **kargs)
         if tree is not None and tree is not before:
             self.instr['changed'] += 1
         return tree
