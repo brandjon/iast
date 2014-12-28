@@ -122,6 +122,10 @@ class NodeTransformer(NodeVisitor):
     # nodes that need to be copied are the ones that lie along
     # a path from the changed node to the root of the tree, rather
     # than all the nodes in the tree.
+    #
+    # seq_visit() and generic_visit() indicate no change by
+    # returning the node rather than None. This is more programmer-
+    # friendly for handlers.
     
     def process(self, tree):
         # Intercept None returns, interpret them as leaving the
@@ -149,6 +153,9 @@ class NodeTransformer(NodeVisitor):
         if changed:
             return tuple(new_seq)
         else:
+            # Be sure to return the original tuple so the
+            # identity test in generic_visit() succeeds
+            # and we potentially avoid a copy.
             return seq
     
     def generic_visit(self, node):
