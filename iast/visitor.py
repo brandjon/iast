@@ -168,7 +168,7 @@ class NodeTransformer(NodeVisitor):
     
     """Visitor that produces a transformed copy of the input tree.
     
-    Visit methods may return a replacement node, or None to indicate
+    Handlers may return a replacement node, or None to indicate
     no change (note that this differs from ast.NodeTransformer).
     If the node is part of a sequence, it may also return a list or
     tuple (normalized to a tuple) to splice in its place; use the
@@ -176,25 +176,37 @@ class NodeTransformer(NodeVisitor):
     """
     
     # In the handlers, "no change" is indicated by returning None
-    # or by returning the exact same node as was given. Returning
-    # a node that is equal to ("==") but not identical to ("is")
-    # the given node is considered a change. This is for efficiency.
+    # or by returning the exact same node as was given. Handlers
+    # may assume that their subcalls to visit() will always indicate
+    # "no change" by returning the node rather than None; this is
+    # ensured by visit(). The same is true of generic_visit().
+    #
+    # This means that it is impossible to replace a part of the tree
+    # with an actual "None" value. For transformers that require this
+    # capability, set the class attribute _nochange_none to False,
+    # which disables this feature.
+    #
+    # Returning a node that is equal to ("==") but not identical to
+    # ("is") the given node is considered a change. This is because
+    # it would be costly to recognize the case where distinct trees
+    # are equal to each other. (In fact, it would take quadratic time
+    # in the depth of the tree.) For efficiency, avoid returning
+    # equal but non-identical values unnecessarily.
     #
     # So long as all children return no change, seq_visit() and
     # generic_visit() return no change. This means that the only
     # nodes that need to be copied are the ones that lie along
     # a path from the changed node to the root of the tree, rather
     # than all the nodes in the tree.
-    #
-    # seq_visit() and generic_visit() indicate no change by
-    # returning the node rather than None. This is more programmer-
-    # friendly for handlers.
     
-    def process(self, tree):
-        # Intercept None returns, interpret them as leaving the
-        # tree unchanged.
-        result = super().process(tree)
-        if result is None:
+    _nochange_none = True
+    """If True, when None is returned by a handler it will be
+    considered the same as if the given node were returned.
+    """
+    
+    def visit(self, tree):
+        result = super().visit(tree)
+        if self._nochange_none and isinstance(tree, AST) and result is None:
             result = tree
         return result
     
@@ -204,8 +216,6 @@ class NodeTransformer(NodeVisitor):
         
         for item in seq:
             result = self.visit(item)
-            if result is None:
-                result = item
             if result is not item:
                 changed = True
             if isinstance(result, (tuple, list)):
@@ -226,7 +236,7 @@ class NodeTransformer(NodeVisitor):
         for field in node._fields:
             value = getattr(node, field)
             result = self.visit(value)
-            if not (result is None or result is value):
+            if result is not value:
                 repls[field] = result
         
         if len(repls) == 0:
@@ -239,11 +249,11 @@ class AdvNodeTransformer(AdvNodeVisitor):
     
     """As above but with context info and arbitrary parameters."""
     
-    def process(self, tree):
-        # Intercept None returns, interpret them as leaving the
-        # tree unchanged.
-        result = super().process(tree)
-        if result is None:
+    _nochange_none = True
+    
+    def visit(self, tree, *args, **kargs):
+        result = super().visit(tree, *args, **kargs)
+        if self._nochange_none and isinstance(tree, AST) and result is None:
             result = tree
         return result
     
@@ -253,8 +263,6 @@ class AdvNodeTransformer(AdvNodeVisitor):
         
         for i, item in enumerate(seq):
             result = self.visit(item, _index=i, *args, **kargs)
-            if result is None:
-                result = item
             if result is not item:
                 changed = True
             if isinstance(result, (tuple, list)):
@@ -275,7 +283,7 @@ class AdvNodeTransformer(AdvNodeVisitor):
         for field in node._fields:
             value = getattr(node, field)
             result = self.visit(value, _field=field, *args, **kargs)
-            if not (result is None or result is value):
+            if result is not value:
                 repls[field] = result
         
         if len(repls) == 0:

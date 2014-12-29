@@ -85,6 +85,18 @@ class VisitorCase(unittest.TestCase):
         tree1 = (parse('pass'), parse('pass'))
         tree2 = Foo.run(tree1)
         self.assertEqual(tree1, tree2)
+        
+        # Unless we want them to be.
+        
+        class Foo(NodeTransformer):
+            _nochange_none = False
+            def visit_Num(self, node):
+                return None
+        
+        tree = parse('return 5')
+        tree = Foo.run(tree)
+        exp_tree = parse('return')
+        self.assertEqual(tree, exp_tree)
     
     def test_counter(self):
         class Foo(ChangeCounter, NodeTransformer):
