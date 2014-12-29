@@ -26,6 +26,11 @@ class PatternCase(unittest.TestCase):
         exp_result = ([], {'_X': Num(1)})
         self.assertEqual(result, exp_result)
         
+        # Wildcard.
+        result = match_step(Wildcard(), Num(1))
+        exp_result = ([], {})
+        self.assertEqual(result, exp_result)
+        
         # Var on RHS.
         result = match_step(Num(1), PatVar('_X'))
         exp_result = ([], {'_X': Num(1)})
@@ -63,7 +68,6 @@ class PatternCase(unittest.TestCase):
             '_X': Num(1),
             '_Y': Num(2),
             '_Z': Num(2),
-            '__0': Num(3),
         }
         self.assertEqual(result, exp_result)
         

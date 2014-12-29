@@ -3,7 +3,9 @@
 
 __all__ = [
     'MatchFailure',
+    'pattern',
     'PatVar',
+    'Wildcard',
     'raw_match',
     'match',
     'PatternTransformer',
@@ -18,12 +20,17 @@ class MatchFailure(Exception):
     """Raised on unification failure, to exit the recursion."""
 
 
-class PatVar(AST):
-    
-    """Pattern variable."""
-    
+class pattern(AST):
+    """Pattern term."""
     _meta = True
+
+class PatVar(pattern):
+    """Pattern variable."""
     _fields = ('id',)
+
+class Wildcard(pattern):
+    """Wildcard pattern variable."""
+    _fields = ()
 
 
 class VarExpander(NodeTransformer):
@@ -67,6 +74,10 @@ def match_step(lhs, rhs):
     or raise MatchFailure if matching is not possible. Variable
     bindings are also returned, as a mapping.
     """
+    # Ignore wildcards.
+    if isinstance(lhs, Wildcard) or isinstance(rhs, Wildcard):
+        return [], {}
+    
     # In practice, bindings is always either empty or contains
     # just one mapping.
     bindings = {}
