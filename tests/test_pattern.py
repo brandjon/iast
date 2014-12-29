@@ -3,9 +3,10 @@
 
 import unittest
 
-from iast.pynode import parse, Num, BinOp, Add
+from iast.pynode import parse, Num, BinOp, Add, Mult
 from iast.pattern import *
 from iast.pattern import match_step
+from iast.pypattern import make_pattern
 
 
 class PatternCase(unittest.TestCase):
@@ -62,59 +63,43 @@ class PatternCase(unittest.TestCase):
             '_X': Num(1),
             '_Y': Num(2),
             '_Z': Num(2),
+            '__0': Num(3),
         }
         self.assertEqual(result, exp_result)
         
         result = match(1, 2)
         self.assertEqual(result, None)
     
-    def test_sub(self):
-        # Basic.
-        tree = parse('print(1 + 2)')
-        tree = sub(self.pate('_X + _Y'), self.pate('(5 * _X) + _Y'), tree)
-        exp_tree = parse('print((5 * 1) + 2)')
-        self.assertEqual(tree, exp_tree)
-        
-        # Function repls, multiple replacements.
-        def foo(_X):
-            return Num(_X * 2)
-        tree = parse('1 + 2')
-        tree = sub(Num(PatVar('_X')), foo, tree)
-        exp_tree = parse('2 + 4')
-        self.assertEqual(tree, exp_tree)
-        
-        # Match outermost first. Keep matching if repl returns None.
-        def foo(_X, _Y):
-            if _X == 1 or isinstance(_Y, Num):
-                return None
-            else:
-                return Num(10 * _X)
-        tree = parse('1 + (2 + (3 + (4 + 5)))')
-        pattern = BinOp(Num(PatVar('_X')), Add(), PatVar('_Y'))
-        # Matching should skip 1 + ..., then hit 2 + ... without
-        # looking at 3 + ... or  beyond.
-        tree = sub(pattern, foo, tree)
-        exp_tree = parse('1 + 20')
-        self.assertEqual(tree, exp_tree)
-    
     def test_pattrans(self):
-        pattern = BinOp(Num(PatVar('_X')), PatVar('_Op'), Num(PatVar('_Y')))
-        repl = lambda _X, _Op, _Y: Num(_X + _Y) if _X < 5 else None
+        class Trans(PatternTransformer):
+            rules = [
+                # Constant-fold addition.
+                (BinOp(Num(PatVar('_X')), Add(), Num(PatVar('_Y'))),
+                    lambda _X, _Y: Num(_X + _Y)),
+                # Constant-fold left-multiplication by 0,
+                # defer to other rules.
+                (BinOp(Num(PatVar('_X')), Mult(), Num(PatVar('_Y'))),
+                    lambda _X, _Y: Num(0) if _X == 0 else NotImplemented),
+                # Constant-fold right-multiplication by 0,
+                # do not defer to other rules.
+                (BinOp(Num(PatVar('_X')), Mult(), Num(PatVar('_Y'))),
+                    lambda _X, _Y: Num(0) if _Y == 0 else None),
+                # Constant-fold multiplication, but never gets
+                # to run since above rule doesn't defer.
+                (BinOp(Num(PatVar('_X')), Mult(), Num(PatVar('_Y'))),
+                    lambda _X, _Y: Num(_X * _Y)),
+            ]
         
-        # Bottom-up.
-        
+        # Bottom-up; subtrees should be processed first.
         tree = parse('1 + (2 + 3)')
-        tree = PatternTransformer.run(tree, [(pattern, repl)])
+        tree = Trans.run(tree)
         exp_tree = parse('6')
         self.assertEqual(tree, exp_tree)
         
-        # Return None to skip match.
-        pattern2 = BinOp(Num(PatVar('_X')), Add(), Num(PatVar('_Y')))
-        repl2 = lambda _X, _Y: Num(_X * _Y)
-        tree = parse('(2 + 3) + 4')
-        tree = PatternTransformer.run(tree,
-                    [(pattern, repl), (pattern2, repl2)])
-        exp_tree = parse('20')
+        # NotImplemented defers to third rule, None blocks last rule.
+        tree = parse('(5 * 2) * ((3 * 0) - 1)')
+        tree = Trans.run(tree)
+        exp_tree = parse('(5 * 2) * (0 - 1)')
         self.assertEqual(tree, exp_tree)
 
 
