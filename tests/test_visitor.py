@@ -5,8 +5,8 @@ import unittest
 
 from iast.util import trim
 from iast.node import dump
-import iast.python.pynode as L
-from iast.python.pynode import parse
+import iast.python as L
+from iast.python import parse
 from iast.visitor import *
 
 

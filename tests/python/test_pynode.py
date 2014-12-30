@@ -5,10 +5,13 @@ import unittest
 import ast
 
 from iast.node import AST
-from iast.python.pynode import *
+from iast.python import *
 
 
 class NodeCase(unittest.TestCase):
+    
+    # The nodes used in these tests are compatible with both
+    # Python 3.3 and Python 3.4.
     
     tree_str = "Module(body=(Expr(value=Name(id='a', ctx=Load())),))"
     
@@ -24,7 +27,7 @@ class NodeCase(unittest.TestCase):
         self.assertEqual(str(tree), self.tree_str)
     
     def test_export(self):
-        tree = eval(self.tree_str, nodes)
+        tree = eval(self.tree_str, py_nodes)
         tree = structToPy(tree)
         exp_str = "Module(body=[Expr(value=Name(id='a', ctx=Load()))])"
         self.assertTrue(isinstance(tree, ast.AST))
