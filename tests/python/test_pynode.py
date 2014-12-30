@@ -3,6 +3,7 @@
 
 import unittest
 import ast
+import pickle
 
 from iast.node import AST
 from iast.python import *
@@ -32,6 +33,14 @@ class NodeCase(unittest.TestCase):
         exp_str = "Module(body=[Expr(value=Name(id='a', ctx=Load()))])"
         self.assertTrue(isinstance(tree, ast.AST))
         self.assertEqual(ast.dump(tree), exp_str)
+    
+    def test_pickle(self):
+        # With the craziness of multiple node kinds and import/export
+        # trickery, make sure pickling still works.
+        node1 = Name('foo', Load())
+        s = pickle.dumps(node1)
+        node2 = pickle.loads(s)
+        self.assertEqual(node1, node2)
 
 
 if __name__ == '__main__':
