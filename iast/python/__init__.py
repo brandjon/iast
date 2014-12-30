@@ -8,7 +8,9 @@ interpreter.
 """
 
 
-__all__ = []
+__all__ = [
+    # ...
+]
 
 
 import sys

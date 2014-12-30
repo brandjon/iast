@@ -3,10 +3,9 @@
 
 import unittest
 
-from iast.python import parse, Num, BinOp, Add, Mult
+from iast.python import parse, make_pattern, Num, BinOp, Add, Mult
 from iast.pattern import *
 from iast.pattern import match_step
-from iast.python.pypattern import make_pattern
 
 
 class PatternCase(unittest.TestCase):
