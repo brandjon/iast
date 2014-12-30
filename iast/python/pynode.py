@@ -20,8 +20,7 @@ __all__ = [
 import ast
 
 from ..util import trim
-from . import python34_asdl
-from ..asdl import primitive_types
+from ..asdl import primitive_types, python33_asdl, python34_asdl
 from ..node import AST, nodes_from_asdl
 
 
