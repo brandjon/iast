@@ -21,46 +21,6 @@ class PylangCase(unittest.TestCase):
     def pe(self, source):
         return extract_mod(parse(source), 'expr')
     
-    def test_ctx(self):
-        tree = self.pe('(x, [y, z], *(q, r.f))')
-        tree = ContextSetter.run(tree, Store)
-        exp_tree = self.ps('(x, [y, z], *(q, r.f)) = None').targets[0]
-        self.assertEqual(tree, exp_tree)
-    
-    def test_extract(self):
-        tree_in = parse('x')
-        
-        tree_out = extract_mod(tree_in, mode='mod')
-        self.assertEqual(tree_out, tree_in)
-        
-        tree_out = extract_mod(tree_in, mode='code')
-        exp_tree_out = (Expr(Name('x', Load())),)
-        self.assertEqual(tree_out, exp_tree_out)
-        
-        tree_out = extract_mod(Module([]), mode='stmt_or_blank')
-        self.assertEqual(tree_out, None)
-        tree_out = extract_mod(tree_in, mode='stmt_or_blank')
-        self.assertEqual(tree_out, Expr(Name('x', Load())))
-        with self.assertRaises(ValueError):
-            extract_mod(parse('x; y'), mode='stmt_or_blank')
-        
-        tree_out = extract_mod(tree_in, mode='stmt')
-        self.assertEqual(tree_out, Expr(Name('x', Load())))
-        with self.assertRaises(ValueError):
-            extract_mod(Module([]), mode='stmt')
-        with self.assertRaises(ValueError):
-            extract_mod(parse('x; y'), mode='stmt')
-        
-        tree_out = extract_mod(tree_in, mode='expr')
-        exp_tree_out = Name('x', Load())
-        self.assertEqual(tree_out, exp_tree_out)
-        with self.assertRaises(ValueError):
-            extract_mod(parse('pass'), mode='expr')
-        
-        tree_out = extract_mod(tree_in, mode='lval')
-        exp_tree_out = Name('x', Store())
-        self.assertEqual(tree_out, exp_tree_out)
-    
     def test_templater(self):
         tree = parse('a = b + c + d')
         subst = {'a': 'a2', 'b': Name('b2', Load()),

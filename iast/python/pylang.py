@@ -2,7 +2,6 @@
 
 
 __all__ = [
-    'ContextSetter',
     'extract_mod',
     'Templater',
     'literal_eval',
@@ -24,105 +23,6 @@ from .pynode import (nodes, stmt, expr, Store, With, withitem,
 from .visitor import NodeVisitor, NodeTransformer
 from .pattern import (PatVar, PatternTransformer,
                       instantiate_wildcards)
-
-
-# Taken from the documentation for the itertools module.
-def pairwise(iterable):
-    "s -> (s0,s1), (s1,s2), (s2, s3), ..."
-    a, b = itertools.tee(iterable)
-    next(b, None)
-    return zip(a, b)
-
-
-class ContextSetter(NodeTransformer):
-    
-    """Propagate context type ctx to the appropriate nodes of an
-    expression tree. Mirrors the behavior of set_context() in
-    Python/ast.c. Specifically, nodes that have a context field
-    get assigned a context of ctx, and Starred, List, and Tuple
-    nodes also propagate ctx recursively.
-    """
-    
-    def __init__(self, ctx):
-        # Type, not instance.
-        self.ctx = ctx
-    
-    def basic(self, node):
-        return node._replace(ctx=self.ctx())
-    
-    def recur(self, node):
-        node = self.generic_visit(node)
-        node = node._replace(ctx=self.ctx())
-        return node
-    
-    visit_Attribute = basic
-    visit_Subscript = basic
-    visit_Name = basic
-    
-    visit_Starred = recur
-    visit_List = recur
-    visit_Tuple = recur
-
-
-def extract_mod(tree, mode=None):
-    """Process a tree to extract a subtree of the top-level
-    Module node. The part to return is selected by mode.
-    
-        mod:
-          Return the original tree, unchanged. (default)
-        
-        code:
-          Get the list of top-level statements.
-        
-        stmt_or_blank:
-          The one top-level statement, or None if there are
-          no statements.
-        
-        stmt:
-          The one top-level statement.
-        
-        expr:
-          The one top-level expression.
-        
-        lval:
-          The one top-level expression, in Store context.
-    """
-    checktype(tree, Module)
-    
-    if mode == 'mod' or mode is None:
-        pass
-    
-    elif mode == 'code':
-        tree = tree.body
-    
-    elif mode == 'stmt_or_blank':
-        if len(tree.body) == 0:
-            return None
-        elif len(tree.body) == 1:
-            tree = tree.body[0]
-        else:
-            raise ValueError('Mode "{}" requires zero or one statements '
-                             '(got {})'.format(mode, len(tree.body)))
-        
-    elif mode in ['stmt', 'expr', 'lval']:
-        if len(tree.body) != 1:
-            raise ValueError('Mode "{}" requires exactly one statement '
-                             '(got {})'.format(mode, len(tree.body)))
-        tree = tree.body[0]
-        if mode in ['expr', 'lval']:
-            if not isinstance(tree, Expr):
-                raise ValueError('Mode "{}" requires Expr node (got {})'
-                                 .format(mode, type(tree).__name__))
-            tree = tree.value
-            
-            if mode == 'lval':
-                tree = ContextSetter.run(tree, Store)
-    
-    elif mode is not None:
-        raise ValueError('Unknown parse mode "' + mode + '"')
-    
-    return tree
-
 
 operator_map = {
     'And': lambda a, b: a and b,

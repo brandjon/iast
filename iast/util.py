@@ -3,10 +3,12 @@
 
 __all__ = [
     'trim',
+    'pairwise',
 ]
 
 
 from textwrap import dedent
+import itertools
 
 
 def trim(text):
@@ -25,3 +27,11 @@ def trim(text):
             lines = lines[ : -1]
     
     return dedent('\n'.join(lines))
+
+
+# Taken from the documentation for the itertools module.
+def pairwise(iterable):
+    "s -> (s0,s1), (s1,s2), (s2, s3), ..."
+    a, b = itertools.tee(iterable)
+    next(b, None)
+    return zip(a, b)
