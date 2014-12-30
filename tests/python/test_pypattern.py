@@ -3,9 +3,8 @@
 
 import unittest
 
-from iast.python import *
 from iast.pattern import PatVar, Wildcard
-from iast.python.pypattern import *
+from iast.python import *
 
 
 class PatternCase(unittest.TestCase):

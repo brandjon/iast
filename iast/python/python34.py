@@ -9,18 +9,25 @@ __all__ = [
 import sys
 
 
-def include(keys, mapping):
-    __all__.extend(keys)
-    globals().update({k: mapping[k] for k in keys})
+def include_dict(mapping):
+    __all__.extend(mapping.keys())
+    globals().update(mapping)
 
 def include_mod(mod):
-    include(mod.__all__, mod.__dict__)
+    # Use get_all() if defined, otherwise use module's __dict__.
+    get_all = getattr(mod, 'get_all', None)
+    if get_all is not None:
+        thismod = sys.modules[__name__]
+        entries = get_all(thismod)
+        include_dict(entries)
+    else:
+        include_dict({k: mod.__dict__[k] for k in mod.__all__})
 
 
 # Include node classes.
 from .pynode import py34_nodes as py_nodes
 __all__.append('py_nodes')
-include(py_nodes, py_nodes)
+include_dict(py_nodes)
 
 # Include native features if version matches.
 if sys.version_info[:2] == (3, 4):
@@ -30,3 +37,7 @@ if sys.version_info[:2] == (3, 4):
 # Include patterns.
 from . import pypattern
 include_mod(pypattern)
+
+# Include utils.
+from . import pyutil
+include_mod(pyutil)
