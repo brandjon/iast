@@ -7,7 +7,6 @@ __all__ = [
     'Templater',
     'literal_eval',
     'MacroProcessor',
-    'PyMacroProcessor',
     'astargs',
 ]
 
@@ -408,64 +407,6 @@ class MacroProcessor(PatternTransformer):
              partial(self.dispatch, prefix='handle_mw_', kind='with')),
         ]
         super().__init__(patrepls)
-
-
-class Seq(AST):
-    
-    """Dummy node to temporarily represent tuples,
-    since they get flattened by NodeTransformer.
-    """
-    
-    _fields = ('elts',)
-
-class SeqEliminator(NodeTransformer):
-    
-    """Replace Seq with actual tuples."""
-    
-    def visit_Seq(self, node):
-        return node.elts
-
-class PyMacroProcessor(MacroProcessor):
-    
-    """Provides fs and fe handlers for constructing statement and
-    expression nodes from source text. This can be a convenient
-    alternative to constructing an AST imperatively, or substituting
-    placeholders with ASTs.
-    """
-    
-    def __init__(self, patterns=False):
-        super().__init__()
-        self.patterns = patterns
-    
-    # Common helper for all nodes. Programmatically define handler
-    # aliases for each node it is used with.
-    def helper(self, name, *args, **kargs):
-        nodecls = nodes[name]
-        if self.patterns:
-            sig = nodecls._signature
-            ba = sig.bind_partial(*args, **kargs)
-            for param in sig.parameters:
-                if param not in ba.arguments:
-                    ba.arguments[param] = PatVar('_')
-            args, kargs = ba.args, ba.kwargs
-        
-        return nodecls(*args, **kargs)
-    
-    # Helper for producing tuples.
-    def handle_fe_Seq(self, name, *args):
-        return Seq(args)
-    
-    def process(self, tree):
-        tree = super().process(tree)
-        tree = SeqEliminator.run(tree)
-        if self.patterns:
-            tree = instantiate_wildcards(tree)
-        return tree
-
-for name, snode in nodes.items():
-    (base,) = snode.__bases__
-    setattr(PyMacroProcessor, 'handle_fe_' + name,
-            PyMacroProcessor.helper)
 
 
 def astargs(func):
