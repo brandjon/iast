@@ -6,8 +6,8 @@ __all__ = [
 ]
 
 
-from .visitor import NodeTransformer
-from .pattern import PatVar, Wildcard
+from ..visitor import NodeTransformer
+from ..pattern import PatVar, Wildcard
 
 
 def make_pattern(tree):

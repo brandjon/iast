@@ -5,7 +5,7 @@ import unittest
 import ast
 
 from iast.node import AST
-from iast.pynode import *
+from iast.python.pynode import *
 
 
 class NodeCase(unittest.TestCase):

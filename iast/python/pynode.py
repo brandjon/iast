@@ -19,9 +19,10 @@ __all__ = [
 
 import ast
 
-from .util import trim
-from .asdl import python34_asdl, primitive_types
-from .node import AST, nodes_from_asdl
+from ..util import trim
+from . import python34_asdl
+from ..asdl import primitive_types
+from ..node import AST, nodes_from_asdl
 
 
 # Dictionary of all node classes in the ast library.

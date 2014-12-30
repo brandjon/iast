@@ -3,9 +3,9 @@
 
 import unittest
 
-from iast.pynode import *
+from iast.python.pynode import *
 from iast.pattern import PatVar, Wildcard
-from iast.pypattern import *
+from iast.python.pypattern import *
 
 
 class PatternCase(unittest.TestCase):
