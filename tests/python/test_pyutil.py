@@ -53,6 +53,23 @@ class PyUtilCase(unittest.TestCase):
         tree = ContextSetter.run(tree, Store)
         exp_tree = self.ps('(x, [y, z], *(q, r.f)) = None').targets[0]
         self.assertEqual(tree, exp_tree)
+    
+    def test_liteval(self):
+        # Basic.
+        tree = self.pe('(1 + 2) * 5')
+        val = literal_eval(tree)
+        self.assertEqual(val, 15)
+        
+        # Comparators, names.
+        tree = self.pe('1 < 2 == -~1 and True and None is None')
+        val = literal_eval(tree)
+        self.assertEqual(val, True)
+        
+        # Collections.
+        tree = self.pe('[1, 2], {3, 4}, {5: "a", 6: "b"}')
+        val = literal_eval(tree)
+        exp_val = [1, 2], {3, 4}, {5: 'a', 6: 'b'}
+        self.assertEqual(val, exp_val)
 
 
 if __name__ == '__main__':

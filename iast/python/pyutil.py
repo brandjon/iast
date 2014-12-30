@@ -2,15 +2,15 @@
 
 
 __all__ = [
-    'ContextSetter',
-    'extract_tree',
 ]
 
 
-from functools import partial
+from functools import partial, reduce
+import operator
 from simplestruct.type import checktype, checktype_seq
 
-from ..visitor import NodeTransformer
+from ..util import pairwise
+from ..visitor import NodeVisitor, NodeTransformer
 
 
 class ContextSetter(NodeTransformer):
@@ -103,8 +103,104 @@ def extract_tree(L, tree, mode=None):
     return tree
 
 
+class LiteralEvaluator(NodeVisitor):
+    
+    """Analogous to ast.literal_eval(), with similar restrictions
+    on the allowed types of nodes.
+    """
+    
+    operator_map = {
+        'And': lambda a, b: a and b,
+        'Or': lambda a, b: a or b,
+        
+        'Add': operator.add,
+        'Sub': operator.sub,
+        'Mult': operator.mul,
+        'Div': operator.truediv,
+        'Mod': operator.mod,
+        'Pow': operator.pow,
+        'LShift': operator.lshift,
+        'RShift': operator.rshift,
+        'BitOr': operator.or_,
+        'BitXor': operator.xor,
+        'BitAnd': operator.and_,
+        'FloorDiv': operator.floordiv,
+        
+        'Invert': operator.invert,
+        'Not': operator.not_,
+        'UAdd': operator.pos,
+        'USub': operator.neg,
+        
+        'Eq': operator.eq,
+        'NotEq': operator.ne,
+        'Lt': operator.lt,
+        'LtE': operator.le,
+        'Gt': operator.gt,
+        'GtE': operator.ge,
+        'Is': operator.is_,
+        'IsNot': operator.is_not,
+        'In': operator.contains,
+        'NotIn': lambda a, b: a not in b,
+    }
+    
+    def seq_visit(self, seq):
+        return seq
+    
+    def generic_visit(self, node):
+        raise ValueError('Unsupported node ' + node.__class__.__name__)
+    
+    def visit_Num(self, node):
+        return node.n
+    
+    def visit_Str(self, node):
+        return node.s
+    
+    def visit_Bytes(self, node):
+        return node.s
+    
+    def visit_Ellipsis(self, node):
+        return Ellipsis
+    
+    def visit_NameConstant(self, node):
+        return node.value
+    
+    def visit_Tuple(self, node):
+        return tuple(self.visit(elt) for elt in node.elts)
+    
+    def visit_List(self, node):
+        return list(self.visit(elt) for elt in node.elts)
+    
+    def visit_Set(self, node):
+        return set(self.visit(elt) for elt in node.elts)
+    
+    def visit_Dict(self, node):
+        return {self.visit(key): self.visit(value)
+                for key, value in zip(node.keys, node.values)}
+    
+    def visit_BoolOp(self, node):
+        func = self.operator_map[node.op.__class__.__name__]
+        return reduce(func, (self.visit(value) for value in node.values))
+    
+    def visit_BinOp(self, node):
+        func = self.operator_map[node.op.__class__.__name__]
+        return func(self.visit(node.left), self.visit(node.right))
+    
+    def visit_UnaryOp(self, node):
+        func = self.operator_map[node.op.__class__.__name__]
+        return func(self.visit(node.operand))
+    
+    def visit_Compare(self, node):
+        values = ((self.visit(node.left),) +
+                  tuple(self.visit(c) for c in node.comparators))
+        cmps = pairwise(values)
+        return all(self.operator_map[op.__class__.__name__](a, b)
+                   for ((a, b), op) in zip(cmps, node.ops))
+
+
 def get_all(L):
     return {
         'ContextSetter': ContextSetter,
-        'extract_tree': partial(extract_tree, L)
+        'extract_tree': partial(extract_tree, L),
+        'LiteralEvaluator': LiteralEvaluator,
+        'literal_eval': LiteralEvaluator().process
     }
