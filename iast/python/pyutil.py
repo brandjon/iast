@@ -1,6 +1,9 @@
 """Simple Python-specific AST utilities."""
 
 
+# Names are exported using get_all() instead of __all__.
+# This allows us to instantiate code with py33 or py34 ast
+# types as needed.
 __all__ = [
 ]
 
@@ -11,6 +14,22 @@ from simplestruct.type import checktype, checktype_seq
 
 from ..util import pairwise
 from ..visitor import NodeVisitor, NodeTransformer
+from ..pattern import PatVar, Wildcard
+
+
+def make_pattern(tree):
+    """Make a pattern from an AST by replacing Name nodes with PatVars
+    and Wildcards. Names beginning with an underscore are considered
+    pattern vars. Names of '_' are considered wildcards.
+    """
+    class NameToPatVar(NodeTransformer):
+        def visit_Name(self, node):
+            if node.id == '_':
+                return Wildcard()
+            elif node.id.startswith('_'):
+                return PatVar(node.id)
+    
+    return NameToPatVar.run(tree)
 
 
 class ContextSetter(NodeTransformer):
@@ -199,6 +218,7 @@ class LiteralEvaluator(NodeVisitor):
 
 def get_all(L):
     return {
+        'make_pattern': make_pattern,
         'ContextSetter': ContextSetter,
         'extract_tree': partial(extract_tree, L),
         'LiteralEvaluator': LiteralEvaluator,

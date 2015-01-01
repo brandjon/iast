@@ -3,6 +3,7 @@
 
 import unittest
 
+from iast.pattern import PatVar, Wildcard
 from iast.python.default import *
 
 
@@ -13,6 +14,20 @@ class PyUtilCase(unittest.TestCase):
     
     def pe(self, source):
         return extract_tree(parse(source), 'expr')
+    
+    def test_make_pattern(self):
+        tree = parse('''
+            a = (_, _x)
+            (_x, _) = b
+            ''')
+        tree = make_pattern(tree)
+        exp_tree = Module((Assign((Name('a', Store()),),
+                                  Tuple((Wildcard(), PatVar('_x')),
+                                        Load())),
+                           Assign((Tuple((PatVar('_x'), Wildcard()),
+                                         Store()),),
+                                  Name('b', Load()))))
+        self.assertEqual(tree, exp_tree)
     
     def test_extract(self):
         tree_in = parse('x')

@@ -34,10 +34,6 @@ if sys.version_info[:2] == (3, 3):
     from . import native
     include_mod(native)
 
-# Include patterns.
-from . import pypattern
-include_mod(pypattern)
-
 # Include utils.
 from . import pyutil
 include_mod(pyutil)
