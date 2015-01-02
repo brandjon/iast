@@ -164,6 +164,27 @@ class PyUtilCase(unittest.TestCase):
         subst = {'<c>a': Expr(Name('a', Load()))}
         with self.assertRaises(RuntimeError):
             Templater.run(tree, subst, repeat=True)
+    
+    def test_ast_args(self):
+        @astargs
+        def foo(a, b:'Str'):
+            return a + b
+        res = foo('x', Str('y'))
+        self.assertEqual(res, 'xy')
+        with self.assertRaises(TypeError):
+            foo('x', 'y')
+        
+        @astargs
+        def foo(a:'ids', b:'Name'):
+            return ', '.join(a) + ' : ' + b
+        res = foo(self.pe('[a, b, c]'), self.pe('d'))
+        self.assertEqual(res, 'a, b, c : d')
+        
+        @astargs
+        def foo(a:'err'):
+            pass
+        with self.assertRaises(TypeError):
+            foo(1)
 
 
 if __name__ == '__main__':

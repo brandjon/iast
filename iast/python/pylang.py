@@ -144,43 +144,4 @@ class MacroProcessor(PatternTransformer):
         super().__init__(patrepls)
 
 
-def astargs(func):
-    """Decorator to automatically unwrap AST arguments."""
-    sig = signature(func)
-    @wraps(func)
-    def f(*args, **kargs):
-        ba = sig.bind(*args, **kargs)
-        for name, val in ba.arguments.items():
-            ann = sig.parameters[name].annotation
-            
-            if ann is Parameter.empty:
-                pass
-            
-            elif ann == 'Str':
-                checktype(val, Str)
-                ba.arguments[name] = val.s
-            
-            elif ann == 'Num':
-                checktype(val, Num)
-                ba.arguments[name] = val.n
-            
-            elif ann == 'Name':
-                checktype(val, Name)
-                ba.arguments[name] = val.id
-            
-            elif ann == 'List':
-                checktype(val, List)
-                ba.arguments[name] = val.elts
-            
-            elif ann == 'ids':
-                if not (isinstance(val, (List, Tuple)) and
-                        all(isinstance(e, Name) for e in val.elts)):
-                    raise TypeError('Expected list of identifiers')
-                ba.arguments[name] = tuple(v.id for v in val.elts)
-            
-            else:
-                raise TypeError('Unknown astarg specifier "{}"'.format(ann))
-        
-        return func(*ba.args, **ba.kwargs)
-    
-    return f
+

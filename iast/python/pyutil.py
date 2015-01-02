@@ -9,8 +9,9 @@ __all__ = [
 
 
 import sys
-from functools import partial, reduce
+from functools import partial, reduce, wraps
 import operator
+from inspect import signature, Parameter
 from simplestruct.type import checktype, checktype_seq
 
 from ..util import pairwise
@@ -351,6 +352,48 @@ class Templater(NodeTransformer):
         return node
 
 
+def astargs(L, func):
+    """Decorator to automatically unwrap AST arguments."""
+    sig = signature(func)
+    @wraps(func)
+    def f(*args, **kargs):
+        ba = sig.bind(*args, **kargs)
+        for name, val in ba.arguments.items():
+            ann = sig.parameters[name].annotation
+            
+            if ann is Parameter.empty:
+                pass
+            
+            elif ann == 'Str':
+                checktype(val, L.Str)
+                ba.arguments[name] = val.s
+            
+            elif ann == 'Num':
+                checktype(val, L.Num)
+                ba.arguments[name] = val.n
+            
+            elif ann == 'Name':
+                checktype(val, L.Name)
+                ba.arguments[name] = val.id
+            
+            elif ann == 'List':
+                checktype(val, L.List)
+                ba.arguments[name] = val.elts
+            
+            elif ann == 'ids':
+                if not isinstance(val, (L.List, L.Tuple)):
+                    raise TypeError('Expected List or Tuple node')
+                checktype_seq(val.elts, L.Name)
+                ba.arguments[name] = tuple(v.id for v in val.elts)
+            
+            else:
+                raise TypeError('Unknown astarg specifier "{}"'.format(ann))
+        
+        return func(*ba.args, **ba.kwargs)
+    
+    return f
+
+
 def get_all(module):
     class _Templater(Templater):
         L = module 
@@ -362,4 +405,5 @@ def get_all(module):
         'LiteralEvaluator': LiteralEvaluator,
         'literal_eval': LiteralEvaluator().process,
         'Templater': _Templater,
+        'astargs': partial(astargs, module),
     }
