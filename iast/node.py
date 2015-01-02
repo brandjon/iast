@@ -11,6 +11,8 @@ __all__ = [
 from collections import OrderedDict
 from simplestruct import Struct, Field, TypedField, MetaStruct
 
+from . import asdl
+
 
 class MetaAST(MetaStruct):
     
@@ -180,7 +182,7 @@ class ASDLImporter:
         self.left_info[name] = (fields, 'AST')
 
 def nodes_from_asdl(asdl_tree, *, module=None, typed=False,
-                    primitive_types=None):
+                    primitive_types=asdl.primitive_types):
     """Given an ASDL structure, return a mapping from node type
     names to node types.
     
@@ -189,7 +191,7 @@ def nodes_from_asdl(asdl_tree, *, module=None, typed=False,
     (This allows instances of the node classes to be pickled.)
     
     If typed is True, the node classes' fields will be type-checked.
-    In this case, primitive_types must be a mapping from names of
+    primitive_types can be used to override the mapping from names of
     primitives appearing in the ASDL to their corresponding types.
     """
     # When not using types, we leave it to MetaAST to generate

@@ -7,7 +7,7 @@ __all__ = [
 ]
 
 
-from ..asdl import primitive_types, python33_asdl, python34_asdl
+from ..asdl import python33_asdl, python34_asdl
 from ..node import nodes_from_asdl
 
 
@@ -27,9 +27,9 @@ def initialize_nodetypes():
     
     py33_nodes.update(nodes_from_asdl(
             python33_asdl, module=home33,
-            typed=True, primitive_types=primitive_types))
+            typed=True))
     py34_nodes.update(nodes_from_asdl(
             python34_asdl, module=home34,
-            typed=True, primitive_types=primitive_types))
+            typed=True))
 
 initialize_nodetypes()
