@@ -185,6 +185,62 @@ class PyUtilCase(unittest.TestCase):
             pass
         with self.assertRaises(TypeError):
             foo(1)
+    
+    def test_macro(self):
+        pe = self.pe
+        pc = self.pc
+        
+        # Handlers for methods and functions, statements and expressions.
+        class Foo(MacroProcessor):
+            def handle_ms_foo(self, f, rec, arg):
+                return Expr(Tuple((rec, arg), Load()))
+            def handle_fe_bar(self, f, arg):
+                return Num(5)
+        
+        tree = parse('o.foo(bar(1))')
+        tree = Foo.run(tree)
+        exp_tree = parse('(o, 5)')
+        self.assertEqual(tree, exp_tree)
+        
+        # With handlers.
+        class Foo(MacroProcessor):
+            def handle_fw_baz(self, f, arg, _body):
+                return (Pass(),) + _body
+        
+        tree = parse('''
+            with baz(1):
+                print(5)
+            ''')
+        tree = Foo.run(tree)
+        exp_tree = parse('''
+            pass
+            print(5)
+            ''')
+        self.assertEqual(tree, exp_tree)
+        
+        # Precedence of expression handlers over other handlers.
+        class Foo(MacroProcessor):
+            def handle_fe_foo(self, f):
+                return pe('bar1')
+            def handle_fs_foo(self, f):
+                return pc('bar2')
+            def handle_fw_foo(self, f, arg, _body):
+                return pc('bar3')
+        
+        tree = parse('''
+            foo() + 1
+            foo()
+            with foo():
+                pass
+        ''')
+        tree = Foo.run(tree)
+        exp_tree = parse('''
+            bar1 + 1
+            bar1
+            with bar1:
+                pass
+            ''')
+        self.assertEqual(tree, exp_tree)
 
 
 if __name__ == '__main__':

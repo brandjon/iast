@@ -16,7 +16,7 @@ from simplestruct.type import checktype, checktype_seq
 
 from ..util import pairwise
 from ..visitor import NodeVisitor, NodeTransformer
-from ..pattern import PatVar, Wildcard
+from ..pattern import PatVar, Wildcard, PatternTransformer
 
 
 def make_pattern(tree):
@@ -394,9 +394,168 @@ def astargs(L, func):
     return f
 
 
+class MacroProcessor(PatternTransformer):
+    
+    """Framework for substituting uses of specific functions and
+    methods with arbitrary ASTs. Each substitution is handled
+    innermost-first. If repeat is given, the substituted AST
+    is also transformed.
+    
+    The following kinds of uses are supported:
+    
+      - function expressions (fe)    "print(foo())"
+      - function statements (fs)     "foo()"
+      - method expressions (me)      "print(obj.foo())"
+      - method statements (ms)       "obj.foo()"
+      - function with (fw)           "with foo(): body"
+      - method with (mw)             "with obj.foo(): body"
+    
+    The expression patterns match calls that occur anywhere, while the
+    statement patterns only match calls that appear at statement level,
+    i.e. immediately inside an Expr node.
+    
+    Function and method patterns invoke the handler whose name
+    corresponds to the syntactic name appearing in the call AST.
+    For methods, this is just the attribute identifier on the method
+    call. For functions, the pattern only matches when the function
+    is given by a Name node, not an arbitrary expression. If the same
+    name is used for multiple kinds of handlers, expression handlers
+    take precedence over statement and with handlers, since the rules
+    are applied to innermost matches first.
+    
+    All forms can accept keyword arguments, but not variadic arguments
+    (*args and **kargs).
+    
+    Handlers are defined as methods in MacroProcessor subclasses,
+    similar to the visit_* methods in NodeVisitor subclasses. The
+    method names have form
+    
+        handle_KIND_NAME
+    
+    where KIND is the abbreviation for one of the six pattern types
+    ("fe", etc.) and NAME is the syntactic function or method name to
+    match.
+    
+    The handlers take in as the first argument (not counting "self")
+    the function or method name that the pattern matched. (This allows
+    the same handler to be reused under multiple names.) The remaining
+    arguments are the ASTs of the arguments in the Call node. For
+    methods, the first of these remaining arguments is the AST of the
+    receiver of the method call (i.e. the expression to the left of the
+    dot). If the Call node has keyword arguments, these are passed as
+    keywords from the key to the AST of the argument value. The "with"
+    pattern handlers take an additional '_body' keyword argument, bound
+    to the AST (tuple of statements) of the with body.
+    
+    The handlers return an AST to replace the matched tree with.
+    A return value of None indicates no change.
+    
+    For example, if the input AST contains an expression
+    
+        print(obj.foo(x + y, z=1))
+    
+    then we look for the handler 'handle_me_foo()'. If it exists, it is
+    called with positional arguments "foo", the AST for "obj", and the
+    AST for "x + y"; and with keyword argument z = the AST for "1".
+    If it returns the AST Num(5), our new tree is
+    
+        print(5)
+    
+    Note that a failure to match the arguments in a Call with the
+    arguments of the handler will result in an exception, the same
+    as when a Python function is called with the wrong signature.
+    """
+    
+    L = None
+    """Stub for module reference."""
+    
+    @property
+    def func_expr_pattern(self):
+        L = self.L
+        return L.Call(L.Name(PatVar('_func'), L.Load()),
+                      PatVar('_args'), PatVar('_keywords'),
+                      PatVar('_starargs'), PatVar('_kwargs'))
+    
+    @property
+    def meth_expr_pattern(self):
+        L = self.L
+        return L.Call(L.Attribute(PatVar('_recv'), PatVar('_func'),
+                                  L.Load()),
+                      PatVar('_args'), PatVar('_keywords'),
+                      PatVar('_starargs'), PatVar('_kwargs'))
+    
+    @property
+    def func_stmt_pattern(self):
+        L = self.L
+        return L.Expr(self.func_expr_pattern)
+    
+    @property
+    def meth_stmt_pattern(self):
+        L = self.L
+        return L.Expr(self.meth_expr_pattern)
+    
+    @property
+    def func_with_pattern(self):
+        L = self.L
+        return L.With((L.withitem(self.func_expr_pattern, None),),
+                      PatVar('_body'))
+    
+    @property
+    def meth_with_pattern(self):
+        L = self.L
+        return L.With((L.withitem(self.meth_expr_pattern, None),),
+                      PatVar('_body'))
+    
+    def dispatch(self, prefix, kind, *, _recv=None, _body=None,
+                 _func, _args, _keywords, _starargs, _kwargs):
+        """Dispatch helper. prefix and kind are strings that vary based
+        on the pattern form. _recv is prepended to _args if not None.
+        If _body is not None, ('_body', _body) is added to _keywords.
+        """
+        handler = getattr(self, prefix + _func, None)
+        if handler is None:
+            return
+        
+        if not (_starargs is None and _kwargs is None):
+            raise TypeError('Star-args and double star-args are not '
+                            'allowed in {} macro {}'.format(
+                            kind, _func))
+        
+        if _recv is not None:
+            _args = (_recv,) + _args
+        _args = (_func,) + _args
+        
+        kwargs = {kw.arg: kw.value for kw in _keywords}
+        if _body is not None:
+            kwargs['_body'] = _body
+        
+        sig = signature(handler)
+        ba = sig.bind(*_args, **kwargs)
+        return handler(*ba.args, **ba.kwargs)
+    
+    def __init__(self):
+        super().__init__()
+        self.rules = [
+            (self.func_expr_pattern,
+             partial(self.dispatch, prefix='handle_fe_', kind='function')),
+            (self.func_stmt_pattern,
+             partial(self.dispatch, prefix='handle_fs_', kind='function')),
+            (self.meth_expr_pattern,
+             partial(self.dispatch, prefix='handle_me_', kind='method')),
+            (self.meth_stmt_pattern,
+             partial(self.dispatch, prefix='handle_ms_', kind='method')),
+            (self.func_with_pattern,
+             partial(self.dispatch, prefix='handle_fw_', kind='with')),
+            (self.meth_with_pattern,
+             partial(self.dispatch, prefix='handle_mw_', kind='with')),
+        ]
+
+
 def get_all(module):
     class _Templater(Templater):
         L = module 
+    class _MacroProcessor(MacroProcessor):
+        L = module
     
     return {
         'make_pattern': make_pattern,
@@ -406,4 +565,5 @@ def get_all(module):
         'literal_eval': LiteralEvaluator().process,
         'Templater': _Templater,
         'astargs': partial(astargs, module),
+        'MacroProcessor': _MacroProcessor,
     }

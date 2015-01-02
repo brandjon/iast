@@ -202,13 +202,11 @@ class PatternTransformer(NodeTransformer):
         else:
             return repl
     
-    @property
-    def rules(self):
-        """List of rules to apply, in order of precedence. Each rule
-        is a pair of a pattern tree and a replacement function (or
-        AST).
-        """
-        return []
+    rules = []
+    """List of rules to apply, in order of precedence. Each rule
+    is a pair of a pattern tree and a replacement function (or
+    AST).
+    """
     
     def visit(self, tree):
         # Process subtree first.
@@ -225,7 +223,7 @@ class PatternTransformer(NodeTransformer):
                 if (self._nochange_none and
                     isinstance(tree, AST) and repl_result is None):
                     # Normalize None.
-                    repl_result = tree
+                    repl_result = subtree_result
                 return repl_result
         else:
             # No matching rule found.
