@@ -2,8 +2,6 @@
 
 
 __all__ = [
-    'Templater',
-    'literal_eval',
     'MacroProcessor',
     'astargs',
 ]
@@ -26,74 +24,7 @@ from .pattern import (PatVar, PatternTransformer,
 
 
 
-class Templater(NodeTransformer):
-    
-    """Instantiate placeholders in the AST according to the given
-    mapping. The following kinds of mappings are recognized. In
-    all cases, the keys are strings.
-    
-        IDENT -> AST
-          Replace Name occurrences for identifier IDENT with an
-          arbitrary expression AST.
-        
-        IDENT1 -> IDENT2
-          In Name occurrences, replace IDENT1 with IDENT2 while
-          leaving context unchanged.
-        
-        IDENT -> func
-          In Name occurrences, replace IDENT with the result of
-          calling func(IDENT). The result may itself be an AST
-          or identifier string, as above.
-        
-        @ATTR1 -> ATTR2
-          Replace uses of attribute ATTR1 with ATTR2.
-        
-        <def>IDENT1 -> IDENT2
-          In function definitions, replace the name of the defined
-          function IDENT1 with IDENT2.
-        
-        <c>IDENT -> AST
-          Replace Name occurrences of IDENT with an arbitrary
-          code AST (i.e. tuple of statements).
-    """
-    
-    def __init__(self, subst):
-        self.subst = subst
-    
-    def name_helper(self, node, val):
-        if isinstance(val, str):
-            return node._replace(id=val)
-        elif isinstance(val, AST):
-            return val
-        else:
-            return self.name_helper(node, val(node.id))
-    
-    def visit_Name(self, node):
-        repl = self.subst.get(node.id, None)
-        if repl is not None:
-            return self.name_helper(node, repl)
-    
-    def visit_Attribute(self, node):
-        node = self.generic_visit(node)
-        new_attr = self.subst.get('@' + node.attr, None)
-        if new_attr:
-            node = node._replace(attr=new_attr)
-        return node
-    
-    def visit_FunctionDef(self, node):
-        node = self.generic_visit(node)
-        new_name = self.subst.get('<def>' + node.name, None)
-        if new_name:
-            node = node._replace(name=new_name)
-        return node
-    
-    def visit_Expr(self, node):
-        if isinstance(node.value, Name):
-            new_code = self.subst.get('<c>' + node.value.id)
-            if new_code is not None:
-                return new_code
-        
-        return self.generic_visit(node)
+
 
 
 class MacroProcessor(PatternTransformer):

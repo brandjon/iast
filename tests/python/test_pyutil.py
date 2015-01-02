@@ -9,6 +9,9 @@ from iast.python.default import *
 
 class PyUtilCase(unittest.TestCase):
     
+    def pc(self, source):
+        return extract_tree(parse(source), 'code')
+    
     def ps(self, source):
         return extract_tree(parse(source), 'stmt')
     
@@ -85,6 +88,82 @@ class PyUtilCase(unittest.TestCase):
         val = literal_eval(tree)
         exp_val = [1, 2], {3, 4}, {5: 'a', 6: 'b'}
         self.assertEqual(val, exp_val)
+    
+    def test_templater(self):
+        # Name to string or AST.
+        tree = parse('a = b + c')
+        subst = {'a': 'a2', 'b': Name('b2', Load()),
+                 'c': 'c2'}
+        tree = Templater.run(tree, subst)
+        exp_tree = parse('a2 = b2 + c2')
+        self.assertEqual(tree, exp_tree)
+        
+        # Attribute name change.
+        tree = parse('a.foo.foo')
+        subst = {'@foo': 'bar'}
+        tree = Templater.run(tree, subst)
+        exp_tree = parse('a.bar.bar')
+        self.assertEqual(tree, exp_tree)
+        
+        # Function name change.
+        tree = parse('def foo(x): return foo(x)')
+        subst = {'<def>foo': 'bar'}
+        tree = Templater.run(tree, subst)
+        exp_tree = parse('def bar(x): return foo(x)')
+        self.assertEqual(tree, exp_tree)
+        
+        # Code substitution.
+        tree = parse('''
+            Foo
+            Bar
+            ''')
+        subst = {'<c>Foo': self.pc('pass'),
+                 'Foo': 'Foo2',
+                 'Bar': 'Bar2'}
+        tree = Templater.run(tree, subst)
+        exp_tree = parse('''
+            pass
+            Bar2
+            ''')
+        self.assertEqual(tree, exp_tree)
+        
+        # Repeat substitution.
+        tree = parse('''
+            def foo():
+                a.b = c
+            Bar
+            ''')
+        tree2 = self.pc('''
+            for x in S:
+                Baz
+            ''')
+        tree3 = self.pc('c')
+        subst = {'c': 'c2', 'c2': 'c3',
+                 '<def>foo': 'foo2', '<def>foo2': 'foo3',
+                 '@b': 'b2', '@b2': 'b3',
+                 '<c>Bar': Expr(Name('Bar2', Load())),
+                 '<c>Bar2': tree2,
+                 '<c>Baz': tree3}
+        tree = Templater.run(tree, subst, repeat=True)
+        exp_tree = parse('''
+            def foo3():
+                a.b3 = c3
+            for x in S:
+                c3
+            ''')
+        self.assertEqual(tree, exp_tree)
+        
+        # Bailout limit.
+        tree = parse('a')
+        subst = {'a': 'a'}
+        with self.assertRaises(RuntimeError):
+            Templater.run(tree, subst, repeat=True)
+        
+        # Recursion limit error.
+        tree = parse('a')
+        subst = {'<c>a': Expr(Name('a', Load()))}
+        with self.assertRaises(RuntimeError):
+            Templater.run(tree, subst, repeat=True)
 
 
 if __name__ == '__main__':

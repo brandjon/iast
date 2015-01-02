@@ -8,6 +8,7 @@ __all__ = [
 ]
 
 
+import sys
 from functools import partial, reduce
 import operator
 from simplestruct.type import checktype, checktype_seq
@@ -216,11 +217,149 @@ class LiteralEvaluator(NodeVisitor):
                    for ((a, b), op) in zip(cmps, node.ops))
 
 
-def get_all(L):
+class Templater(NodeTransformer):
+    
+    """Instantiate placeholders in the AST according to the given
+    mapping. The following kinds of mappings are recognized. In
+    all cases, the keys are strings, and None values indicate
+    "no change".
+    
+        IDENT -> AST
+          Replace Name occurrences for identifier IDENT with an
+          arbitrary non-None expression AST.
+        
+        IDENT1 -> IDENT2
+          In Name occurrences, replace IDENT1 with IDENT2 while
+          leaving context unchanged.
+        
+        @ATTR1 -> ATTR2
+          Replace uses of attribute ATTR1 with ATTR2.
+        
+        <def>IDENT1 -> IDENT2
+          In function definitions, replace the name of the defined
+          function IDENT1 with IDENT2.
+        
+        <c>IDENT -> AST
+          Replace Name occurrences of IDENT with an arbitrary
+          code AST (i.e. tuple of statements).
+    
+    If the repeat flag is given, then the names and ASTs introduced
+    by applying the mapping will be transformed repeatedly until
+    no rules apply (or all applicable rules map to None). This means
+    that a cyclic set of rules can cause an infinite loop. (This holds
+    even if the rules apply but produce an equivalent tree.)
+    
+    If repeat is True, then bailout is the number of substitutions
+    to allow before failing with an exception. Set bailout to None
+    to disable this protection.
+    """
+    
+    L = None
+    """Stub for module reference."""
+    
+    def __init__(self, subst, *, repeat=False,
+                 bailout=sys.getrecursionlimit()):
+        super().__init__()
+        self.subst = subst
+        self.repeat = repeat
+        self.bailout = bailout
+    
+    def fix(self, func, value):
+        """If repeat is True, repeatedly apply func to value
+        until a non-None result is obtained. Otherwise, apply
+        func exactly once. In either case, return the last non-
+        None value (or the original value if the first application
+        was None).
+        """
+        steps = 0
+        changed = True
+        while changed:
+            if steps >= self.bailout:
+                raise RuntimeError('Exceeded bailout ({}) in '
+                                   'Templater'.format(self.bailout))
+            changed = False
+            result = func(value)
+            if result is not None:
+                if self.repeat:
+                    changed = True
+                value = result
+            steps += 1
+        return value
+    
+    def visit_Name(self, node):
+        def f(node):
+            # If we yield a non-Name AST, stop.
+            if not isinstance(node, self.L.Name):
+                return None
+            # Get the mapping entry for this identifier.
+            # Result is either a string, None, or an expression AST.
+            result = self.subst.get(node.id, None)
+            # Normalize string to Name node.
+            if isinstance(result, str):
+                result = node._replace(id=result)
+            return result
+        
+        return self.fix(f, node)
+    
+    def visit_Attribute(self, node):
+        # Recurse first. If we repeatedly change the attribute
+        # name in the fixpoint loop, the node's subexpressions
+        # won't be affected.
+        node = self.generic_visit(node)
+        
+        def f(node):
+            new_attr = self.subst.get('@' + node.attr, None)
+            if new_attr is None:
+                return None
+            else:
+                return node._replace(attr=new_attr)
+        
+        return self.fix(f, node)
+    
+    def visit_FunctionDef(self, node):
+        # Recurse first, as above.
+        node = self.generic_visit(node)
+        
+        def f(node):
+            new_name = self.subst.get('<def>' + node.name, None)
+            if new_name is None:
+                return None
+            else:
+                return node._replace(name=new_name)
+        
+        return self.fix(f, node)
+    
+    def visit_Expr(self, node):
+        # Don't recurse first. We want a '<c>Foo' rule to take
+        # precedence over a 'Foo' rule.
+        #
+        # Don't use self.fix. If we repeat, we want to recursively
+        # apply arbitrary rules to the new substitution result.
+        if isinstance(node.value, self.L.Name):
+            new_code = self.subst.get('<c>' + node.value.id, None)
+            if new_code is not None:
+                if self.repeat:
+                    # Note that we visit(), not generic_visit(),
+                    # so rules can apply freely at the top level
+                    # of new_code.
+                    new_code = self.visit(new_code)
+                return new_code
+        
+        # If the rule didn't trigger or it said no change,
+        # process subtree as normal.
+        node = self.generic_visit(node)
+        return node
+
+
+def get_all(module):
+    class _Templater(Templater):
+        L = module 
+    
     return {
         'make_pattern': make_pattern,
         'ContextSetter': ContextSetter,
-        'extract_tree': partial(extract_tree, L),
+        'extract_tree': partial(extract_tree, module),
         'LiteralEvaluator': LiteralEvaluator,
-        'literal_eval': LiteralEvaluator().process
+        'literal_eval': LiteralEvaluator().process,
+        'Templater': _Templater,
     }

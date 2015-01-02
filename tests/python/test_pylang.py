@@ -21,32 +21,6 @@ class PylangCase(unittest.TestCase):
     def pe(self, source):
         return extract_mod(parse(source), 'expr')
     
-    def test_templater(self):
-        tree = parse('a = b + c + d')
-        subst = {'a': 'a2', 'b': Name('b2', Load()),
-                 'c': 'c2', 'd': lambda s: s + '2'}
-        tree = Templater.run(tree, subst)
-        exp_tree = parse('a2 = b2 + c2 + d2')
-        self.assertEqual(tree, exp_tree)
-        
-        tree = parse('a.foo.foo')
-        subst = {'@foo': 'bar'}
-        tree = Templater.run(tree, subst)
-        exp_tree = parse('a.bar.bar')
-        self.assertEqual(tree, exp_tree)
-        
-        tree = parse('def foo(x): return foo(x)')
-        subst = {'<def>foo': 'bar'}
-        tree = Templater.run(tree, subst)
-        exp_tree = parse('def bar(x): return foo(x)')
-        self.assertEqual(tree, exp_tree)
-        
-        tree = parse('Foo')
-        subst = {'<c>Foo': self.pc('pass')}
-        tree = Templater.run(tree, subst)
-        exp_tree = parse('pass')
-        self.assertEqual(tree, exp_tree)
-    
     def test_macro(self):
         class Foo(MacroProcessor):
             def handle_ms_foo(self, f, rec, arg):
