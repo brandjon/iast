@@ -182,6 +182,13 @@ class LiteralEvaluator(NodeVisitor):
     def visit_Ellipsis(self, node):
         return Ellipsis
     
+    def visit_Name(self, node):
+        # This is used for the py33 grammar, which lacks NameConstant.
+        map = {'True': True, 'False': False, 'None': None}
+        if node.id not in map:
+            raise ValueError("Unsupported Name node '{}'".format(node.id))
+        return map[node.id]
+    
     def visit_NameConstant(self, node):
         return node.value
     
