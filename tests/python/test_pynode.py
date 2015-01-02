@@ -6,7 +6,7 @@ import ast
 import pickle
 
 from iast.node import AST
-from iast.python import *
+from iast.python.default import *
 
 
 class NodeCase(unittest.TestCase):
