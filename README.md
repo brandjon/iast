@@ -27,7 +27,7 @@ corresponding ASDL files.
 
 ## Installation ##
 
-To install from pip/PyPI: *[TODO: Will not work until v0.2.0 is released]*
+To install from pip/PyPI:
 
 ```
 python -m pip install iast
