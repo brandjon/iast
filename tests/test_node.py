@@ -53,6 +53,7 @@ class NodeCase(unittest.TestCase):
         {
             expr = Sum(expr* operands)
                  | Num(num val)
+                 | Unit()
             num = (int real, int? imag)
         }
         ''')
@@ -65,7 +66,8 @@ class NodeCase(unittest.TestCase):
             ('expr', ([], 'AST')),
             ('num', ([('real', 'int', ''), ('imag', 'int', '?')], 'AST')),
             ('Sum', ([('operands', 'expr', '*')], 'expr')),
-            ('Num', ([('val', 'num', '')], 'expr'))
+            ('Num', ([('val', 'num', '')], 'expr')),
+            ('Unit', ([], 'expr')),
         ])
         self.assertEqual(info.items(), exp_info.items())
     
@@ -97,6 +99,11 @@ class NodeCase(unittest.TestCase):
         Numcls(numcls(1, 2))
         with self.assertRaises(TypeError):
             Numcls((1, 2))
+        
+        Sumcls = lang['Sum']
+        Unitcls = lang['Unit']
+        with self.assertRaises(TypeError):
+            Sumcls(Unitcls())
 
 
 if __name__ == '__main__':

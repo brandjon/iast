@@ -80,6 +80,16 @@ class TypedASTField(TypedField):
     def checktype_seq(self, value, kind, **kargs):
         if isinstance(value, AST) and value._meta:
             return
+        # If we get passed a singular AST by mistake,
+        # don't allow the AST to be coerced to a sequence
+        # via simplestruct.Struct.__iter__() (which gives
+        # an iterator over node fields). Instead make
+        # this an explicit error.
+        if isinstance(value, AST):
+            exp = self.str_kind(kind)
+            got = self.str_valtype(value)
+            raise TypeError('Expected sequence of {}; got {} node '
+                            'instead'.format(exp, got))
         super().checktype_seq(value, kind, **kargs)
     
     def normalize(self, inst, value):
