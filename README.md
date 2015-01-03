@@ -18,9 +18,12 @@ out-of-the-box, along with tools for writing code templates and macros
 targeting Python code. However, the main framework works on ASTs for
 arbitrary languages.
 
-## Example ##
+## Examples ##
 
-TODO
+See [arith.py](examples/arith.py) for basic usage and visitors/transformers.
+See [toy.py](examples/toy.py) for a comparison with Python's own ast module
+and the use of type checking. Both examples use abstract grammars from the
+corresponding ASDL files.
 
 ## Installation ##
 
@@ -48,3 +51,9 @@ in the project root. Tox tests both Python 3.3 and 3.4 configurations.
 Building a source distribution (`python setup.py sdist`) requires the
 setuptools extension package
 [setuptools-git](https://github.com/wichert/setuptools-git).
+
+## References ##
+
+[1]: https://github.com/eliben/asdl_parser
+[[1]]: Eli Bendersky's rewrite of the Python ASDL parser, which powers
+iAST's generation of nodes from ASDL.
