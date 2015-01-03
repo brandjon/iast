@@ -16,6 +16,7 @@ covered by the PSF license.
 
 
 __all__ = [
+    'parse_asdl',
     'primitive_types',
     'python33_asdl',
     'python34_asdl',
@@ -25,9 +26,8 @@ __all__ = [
 
 from os.path import join, dirname
 
-from .asdl import *
-from .asdl import __all__ as _asdl_all, parse as _asdl_parse
-__all__.extend(_asdl_all)
+from .asdl import ASDLParser
+
 
 primitive_types = {
     'identifier': str,
@@ -38,14 +38,13 @@ primitive_types = {
     'singleton': object,
 }
 
-# Redefine parse() to accept a string rather than an open file.
-
-def parse(asdl_source):
-    from .asdl import ASDLParser
+def parse_asdl(asdl_source):
     parser = ASDLParser()
     return parser.parse(asdl_source)
 
 py_asdl33_filename = join(dirname(__file__), 'Python33.asdl')
 py_asdl34_filename = join(dirname(__file__), 'Python34.asdl')
-python33_asdl = _asdl_parse(py_asdl33_filename)
-python34_asdl = _asdl_parse(py_asdl34_filename)
+with open(py_asdl33_filename, 'rt') as file:
+    python33_asdl = parse_asdl(file.read())
+with open(py_asdl34_filename, 'rt') as file:
+    python34_asdl = parse_asdl(file.read())

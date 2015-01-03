@@ -6,7 +6,7 @@ from collections import OrderedDict
 from simplestruct import Field
 
 from iast.util import trim
-from iast.asdl import parse as asdl_parse
+from iast.asdl import parse_asdl
 from iast.node import *
 from iast.node import ASDLImporter
 
@@ -58,7 +58,7 @@ class NodeCase(unittest.TestCase):
         ''')
     
     def test_asdl_importer(self):
-        asdl = asdl_parse(self.asdl_spec)
+        asdl = parse_asdl(self.asdl_spec)
         info = ASDLImporter().run(asdl)
         
         exp_info = OrderedDict([
@@ -70,7 +70,7 @@ class NodeCase(unittest.TestCase):
         self.assertEqual(info.items(), exp_info.items())
     
     def test_from_asdl_untyped(self):
-        asdl = asdl_parse(self.asdl_spec)
+        asdl = parse_asdl(self.asdl_spec)
         lang = nodes_from_asdl(asdl)
         
         self.assertEqual(lang['AST'], AST)
@@ -80,7 +80,7 @@ class NodeCase(unittest.TestCase):
         self.assertEqual(lang['num'].__bases__, (lang['AST'],))
     
     def test_from_asdl_typed(self):
-        asdl = asdl_parse(self.asdl_spec)
+        asdl = parse_asdl(self.asdl_spec)
         lang = nodes_from_asdl(asdl, typed=True,
                                primitive_types={'int': int})
         
