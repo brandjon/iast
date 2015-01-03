@@ -8,7 +8,7 @@ setup(
     author =        'Jon Brandvein',
     author_email =  'jon.brandvein@gmail.com',
     license =       'MIT License',
-    description =   'A library for manipulating Python ASTs',
+    description =   'A library for defining and manipulating ASTs',
     
     classifiers = [
         'Development Status :: 3 - Alpha',
