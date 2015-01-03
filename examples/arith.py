@@ -9,7 +9,7 @@ import iast
 with open('arith.asdl', 'rt') as file:
     absgrammar = iast.parse_asdl(file.read())
 # Generate node classes and store them in a mapping by name.
-lang = iast.node.nodes_from_asdl(absgrammar, typed=True)
+lang = iast.node.nodes_from_asdl(absgrammar)
 # Flood the global namespace with these node classes so
 # we can use them more easily.
 globals().update(lang)
