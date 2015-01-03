@@ -1,0 +1,13 @@
+module toy
+{
+    program = (stmt* code)
+    
+    stmt = Pass()
+         | Print(expr? value)
+         | Assign(identifier id, expr value)
+         | While(expr test, stmt* code)
+         | If(expr test, stmt* code, stmt* orelse)
+    
+    expr = Num(object n)
+         | Var(identifier id)
+}

@@ -1,89 +1,36 @@
-"""Pattern-matching and unification for struct ASTs."""
-
-# IDEA: Could exploit the fact that Python expressions never contain
-# statements, to avoid descending into expressions when trying to
-# match a statement.
-
-
-import itertools
-
-from iast.node import AST
-from iast.visitor import NodeVisitor, NodeTransformer
+"""Pattern-matching for Struct ASTs."""
 
 
 __all__ = [
     'MatchFailure',
+    'pattern',
     'PatVar',
-    'instantiate_wildcards',
-    'make_pattern',
+    'Wildcard',
     'raw_match',
     'match',
-    'sub',
     'PatternTransformer',
 ]
+
+
+from .node import AST
+from .visitor import NodeVisitor, NodeTransformer
 
 
 class MatchFailure(Exception):
     """Raised on unification failure, to exit the recursion."""
 
 
-class pattern(AST):    
-    """Meta node for AST patterns."""
+class pattern(AST):
+    """Pattern term."""
+    _meta = True
 
 class PatVar(pattern):
-    
     """Pattern variable."""
-    
     _fields = ('id',)
 
-def is_wildname(id):
-    # Wildcards begin with two underscores.
-    return id.startswith('__')
-
-
-def instantiate_wildcards(tree):
-    """Turn each occurrence of a wildcard PatVar into a uniquely-named
-    PatVar.
-    """
-    # We take care not to clash with an existing PatVar name
-    # (e.g. from a previously instantiated wildcard).
-    wildnames = ('__' + str(i) for i in itertools.count())
-    
-    class PatVarFinder(NodeVisitor):
-        def process(self, tree):
-            self.ids = set()
-            super().process(tree)
-            return self.ids
-        def visit_PatVar(self, node):
-            self.ids.add(node.id)
-    
-    used = PatVarFinder.run(tree)
-    
-    class WildcardInstantiator(NodeTransformer):
-        def visit_PatVar(self, node):
-            if node.id == '_':
-                name = next(wildnames)
-                while name in used:
-                    name = next(wildnames)
-                return node._replace(id=name)
-    
-    tree = WildcardInstantiator.run(tree)
-    return tree
-
-def make_pattern(tree):
-    """Make a pattern from an AST by replacing Name nodes with PatVars.
-    Names that begin with an underscore are considered pattern vars.
-    Names of '_' are considered wildcards.
-    """
-    
-    class NameToPatVar(NodeTransformer):
-        def visit_Name(self, node):
-            if node.id.startswith('_'):
-                return PatVar(node.id)
-    
-    tree = NameToPatVar.run(tree)
-    tree = instantiate_wildcards(tree)
-    return tree
+class Wildcard(pattern):
+    """Wildcard pattern variable."""
+    _fields = ()
 
 
 class VarExpander(NodeTransformer):
@@ -91,26 +38,34 @@ class VarExpander(NodeTransformer):
     """Expand pattern variables."""
     
     def __init__(self, mapping):
+        super().__init__()
         self.mapping = mapping
     
     def visit_PatVar(self, node):
-        return self.mapping.get(node.id, None)
+        return self.mapping.get(node.id, node)
 
 class OccChecker(NodeVisitor):
     
-    """Run an occurs-check."""
+    """Run an occurs-check for a variable."""
+    
+    class Found(Exception):
+        pass
     
     def __init__(self, var):
+        super().__init__()
         self.var = var
     
     def process(self, tree):
-        self.found = False
-        super().process(tree)
-        return self.found
+        try:
+            super().process(tree)
+        except self.Found:
+            return True
+        else:
+            return False
     
     def visit_PatVar(self, node):
         if node.id == self.var:
-            self.found = True
+            raise self.Found
 
 
 def match_step(lhs, rhs):
@@ -119,6 +74,10 @@ def match_step(lhs, rhs):
     or raise MatchFailure if matching is not possible. Variable
     bindings are also returned, as a mapping.
     """
+    # Ignore wildcards.
+    if isinstance(lhs, Wildcard) or isinstance(rhs, Wildcard):
+        return [], {}
+    
     # In practice, bindings is always either empty or contains
     # just one mapping.
     bindings = {}
@@ -200,11 +159,6 @@ def raw_match(tree1, tree2):
         for var, repl in new_bindings.items():
             bindvar(var, repl)
     
-    # Remove wildcard bindings.
-    for k in list(result.keys()):
-        if is_wildname(k):
-            del result[k]
-    
     return result
 
 def match(tree1, tree2):
@@ -214,74 +168,63 @@ def match(tree1, tree2):
     try:
         return raw_match(tree1, tree2)
     except MatchFailure:
-        return None 
-
-
-# Pattern substitution takes in a pattern tree P with variables X,
-# and an input tree T. If P matches T, a new tree is returned as
-# determined by a replacement function (repl). The repl takes in
-# each X as a keyword argument, bound to the corresponding matching
-# subtree of T. As a convenience, the repl may be given instead as
-# an AST that contains uses of the vars in X. The repl returns
-# either a replacement tree, or None to skip this match.
-
-
-def normalize_repl(repl):
-    """Turn AST repls into function repls."""
-    if isinstance(repl, AST):
-        return lambda **mapping: VarExpander.run(repl, mapping)
-    else:
-        return repl
-
-class Substitutor(NodeTransformer):
-    
-    """Perform pattern substitution on all outermost matching subtrees."""
-    
-    def __init__(self, pattern, repl):
-        self.pattern = pattern
-        self.repl = normalize_repl(repl)
-    
-    def visit(self, tree):
-        mapping = match(self.pattern, tree)
-        if mapping is not None:
-            # Match. If repl returns None, continue recursing.
-            result = self.repl(**mapping)
-            if result is None:
-                result = super().visit(tree)
-            return result
-        else:
-            return super().visit(tree)
-
-def sub(pattern, repl, tree):
-    """Analogous to re.sub(). All outermost occurrences of pattern in
-    tree are replaced according to repl.
-    """
-    return Substitutor.run(tree, pattern, repl)
+        return None
 
 
 class PatternTransformer(NodeTransformer):
     
-    """Apply multiple patterns, bottom-up. Accepts a list of
-    (pattern, repl) pairs, and applies each one in turn until the
-    pattern matches and the repl returns a non-None value. Children
-    are processed before the current node is matched against.
+    """Apply pattern substitution rules in a bottom-up (post-traversal)
+    manner.
+    
+    A rule consists of a pattern tree and a replacement function.
+    When a rule is applied to an input tree, if the pattern matches
+    the input, then the tree gets replaced by the result of calling
+    the function. The function is passed keyword arguments for each
+    of the pattern's PatVars, bound to the corresponding matching
+    subtree of the input.
+    
+    The replacement function may return NotImplemented to defer to
+    subsequent rules. None may be returned to indicate "no change"
+    (but see NodeTransformer for information on the _nochange_none
+    flag).
+    
+    As a convenience, a rule may give an AST instead of a replacement
+    function. The AST serves as a template where PatVars get expanded
+    according to the match.
     """
     
-    def __init__(self, patrepls):
-        self.patrepls = [(pattern, normalize_repl(repl))
-                         for pattern, repl in patrepls]
+    def normalize_repl_func(self, repl):
+        """Normalize a value that is either a replacement function
+        or an AST to just a replacement function.
+        """
+        if isinstance(repl, AST):
+            return lambda **mapping: VarExpander.run(repl, mapping)
+        else:
+            return repl
+    
+    rules = []
+    """List of rules to apply, in order of precedence. Each rule
+    is a pair of a pattern tree and a replacement function (or
+    AST).
+    """
     
     def visit(self, tree):
-        subresult = super().visit(tree)
-        if subresult is not None:
-            tree = subresult
+        # Process subtree first.
+        subtree_result = super().visit(tree)
         
-        for pattern, repl in self.patrepls:
-            mapping = match(pattern, tree)
+        for pattern, repl in self.rules:
+            mapping = match(pattern, subtree_result)
             if mapping is not None:
-                patresult = repl(**mapping)
-                if patresult is not None:
-                    return patresult
-        
-        # No patterns matched. Propagate the (possibly None) subresult.
-        return subresult
+                # If the match succeeded, consult the repl.
+                repl_result = repl(**mapping)
+                if repl_result is NotImplemented:
+                    # Defer to next rule.
+                    continue
+                if (self._nochange_none and
+                    isinstance(tree, AST) and repl_result is None):
+                    # Normalize None.
+                    repl_result = subtree_result
+                return repl_result
+        else:
+            # No matching rule found.
+            return subtree_result

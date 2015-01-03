@@ -1,0 +1,9 @@
+module arith
+{
+    expr = BinOp(expr left, operator op, expr right)
+         | Neg(expr value)
+         | Num(object n)
+         | Var(identifier id)
+    
+    operator = Add | Sub | Mult | Div
+}
