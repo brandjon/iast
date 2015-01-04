@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name =          'iAST',
-    version =       '0.2.1',
+    version =       '0.2.2-dev',
     url =           'https://github.com/brandjon/iast',
     
     author =        'Jon Brandvein',
