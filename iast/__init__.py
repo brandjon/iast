@@ -1,6 +1,6 @@
 """Provides tools for defining and manipulating abstract syntax trees."""
 
-__version__ = '0.2.0'
+__version__ = '0.2.1'
 
 from .asdl import *
 from .util import *
