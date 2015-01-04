@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name =          'iAST',
-    version =       '0.2.0',
+    version =       '0.2.1',
     url =           'https://github.com/brandjon/iast',
     
     author =        'Jon Brandvein',
@@ -18,7 +18,8 @@ setup(
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],
     
-    packages =      ['iast'],
+    packages =      ['iast', 'iast.asdl', 'iast.python'],
+    package_data =  {'iast.asdl': ['*.asdl']},
     
     test_suite =    'tests',
     
